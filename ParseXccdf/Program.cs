@@ -442,67 +442,6 @@ namespace ParseXccdf
                     Console.WriteLine(ex.Message);
                 }
             }
-            //string xmlFolderPath = "C:\\git\\PowerStig\\source\\StigData\\Processed";
-            //string xccdFolderPath = "C:\\git\\PowerStig\\source\\StigData\\Archive";
-
-
-            
-
-
-            // CompareStigLists(xccdList, xmlList);
-
-
-
-            //string convertedXMLPath = "C:\\git\\PowerStig\\source\\StigData\\Processed\\Adobe-AcrobatPro-2.1.xml";
-            //string convertedXMLContent = File.ReadAllText(convertedXMLPath);
-
-            //string XccdfFilePath = @"C:\PowerStigRHEL\U_Oracle_Linux_8_STIG_V2R3_Manual-xccdf.xml";
-            //string XccdfFilePath = @"C:\PowerStigRHEL\test\U_Adobe_Acrobat_Pro_DC_Continuous_V2R1_Manual-xccdf.xml";
-            //string XccdXmlContent = File.ReadAllText(XccdfFilePath);
-
-            // compare the rules in coverted to archived.  All rules should be accounted for
-            //string[] convertedRules = GetConvertedRules(xmlFolderPath);
-            //string[] xccdfRules = GetXCCDFRules(xccdfFolderPath);
-
-
-
-
-
-            //XmlDocument doc = new XmlDocument();
-            //doc.LoadXml(xmlContent);
-            //List<string> xccdfRules = GetVRules(XccdXmlContent);
-            //List<string> convertedRules = GetVRules(convertedXMLContent);
-
-            //List<string> uniqueToXccdf = xccdfRules.Except(convertedRules).ToList();
-            //List<string> uniqueToConvertedXML = convertedRules.Except(xccdfRules).ToList();
-            /*
-            Console.WriteLine("Only in XCCDF:");
-            if(uniqueToXccdf.Count > 0)
-            {
-                foreach (var rule in uniqueToXccdf)
-                {
-                    Console.WriteLine("\t" + rule);
-                }
-            }
-            else
-            {
-                Console.WriteLine("\tNone");
-            }
-
-            Console.WriteLine("Only in XML");
-            if (uniqueToConvertedXML.Count > 0)
-            {
-                foreach (var rule in uniqueToConvertedXML)
-                {
-                    Console.WriteLine("\t" + rule);
-                }
-            }
-            else
-            {
-                Console.WriteLine("\tNone");
-            }
-            */
-
         }
     }
 }
