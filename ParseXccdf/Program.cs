@@ -12,6 +12,7 @@ using System.Runtime.InteropServices;
 using System.Data;
 using System.Web;
 using System.Runtime.CompilerServices;
+using System.Net.Http.Headers;
 
 namespace ParseXccdf
 {
@@ -31,11 +32,6 @@ namespace ParseXccdf
 
             List<string> attributeValues = elements.Select(attr => attr.Value).ToList();
 
-            if(FilePath.Contains("Office-System2013-1.9.xml"))
-            {
-                string temp = "";
-            }
-
             Stig stig = new Stig();
             stig.FilePath = FilePath;
             stig.V_Rules = attributeValues.ToArray();
@@ -44,58 +40,94 @@ namespace ParseXccdf
         }
         static string GetPreProcessedCompany(string data)
         {
-            string[] splits = data.Split('_');
-            return splits[1];
+            try
+            {
+                string[] splits = data.Split('_');
+                return splits[1];
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+
         }
         static string GetPreProcessedProduct(string data)
         {
-            string[] splits = data.Split('_');
-
-            string pattern = @"V\dR\d";
-            Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
-            int start = 1;
-            int end = 0;
             string product = "";
-            foreach(string str in splits)
+            try
             {
-                if(regex.IsMatch(str))
+                string[] splits = data.Split('_');
+
+                string pattern = @"V\dR\d";
+                Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
+                int start = 1;
+                int end = 0;
+                
+                foreach (string str in splits)
                 {
-                    break;
+                    if (regex.IsMatch(str))
+                    {
+                        break;
+                    }
+                    end++;
                 }
-                end++;
+
+                for (int i = start; i < end; i++)
+                {
+                    product += splits[i];
+                    product += "_";
+                }
+
+
+                product = product.Replace("_STIG", "");
+
             }
-            
-            for(int i = start; i < end; i++)
+            catch (Exception ex)
             {
-                product += splits[i];
-                product += "_";
+                product = ex.Message;
             }
 
-
-            product = product.Replace("_STIG", "");
             return product.TrimEnd('_');
         }
         static string GetPreProcessedVersion(string fileName)
         {
-            Regex regex = new Regex(@"V\dR\d", RegexOptions.IgnoreCase);
-            string[] preSplit = fileName.Split('_');
-            int i = 0;
-            foreach (string str in preSplit)
+            string preSplitVersion = "";
+            try
             {
-                if (regex.IsMatch(str)) { break; }
-                i++;
+                Regex regex = new Regex(@"V\dR\d", RegexOptions.IgnoreCase);
+                string[] preSplit = fileName.Split('_');
+                int i = 0;
+                foreach (string str in preSplit)
+                {
+                    if (regex.IsMatch(str)) { break; }
+                    i++;
+                }
+                preSplitVersion = preSplit[i];
+                preSplitVersion = preSplitVersion.Trim('V');
+                preSplitVersion = preSplitVersion.Replace('R', '.');
             }
-            string preSplitVersion = preSplit[i];
-            preSplitVersion = preSplitVersion.Trim('V');
-            preSplitVersion = preSplitVersion.Replace('R', '.');
+            catch (Exception ex)
+            {
+                preSplitVersion = ex.Message;
+            }
 
             return preSplitVersion;
         }
         static string GetPostProcessedCompany(string data)
         {
-            string[] splits = data.Split('\\');
-            string[] parts = splits[splits.Count() - 1].Split('-');
-            return parts[0];
+            string returnParts = "";
+            try
+            {
+                string[] splits = data.Split('\\');
+                string[] parts = splits[splits.Count() - 1].Split('-');
+                returnParts =  parts[0];
+            }
+            catch (Exception ex)
+            {
+                returnParts = ex.Message;
+            }
+            return returnParts;
+
         }
         static string GetPostProcessedProduct(string data)
         {
@@ -104,72 +136,95 @@ namespace ParseXccdf
             // trim value to match the preProcessed Product Name
 
             string product = "";
-            string xmlContent = File.ReadAllText(data);
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.LoadXml(xmlContent);
-            XmlElement root = xmlDoc.DocumentElement;
-            if (root != null && root.HasAttribute("filename"))
+            try
             {
-                product = root.GetAttribute("filename");
-
-            }
-            else
-            {
-                Console.WriteLine("Attribute not found.");
-            }
-
-            string[] splits = product.Split('_');
-            string pattern = @"V\dR\d";
-            Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
-            int start = 1;
-            int end = 0;
-            foreach (string str in splits)
-            {
-                if (regex.IsMatch(str))
+                string xmlContent = File.ReadAllText(data);
+                XmlDocument xmlDoc = new XmlDocument();
+                xmlDoc.LoadXml(xmlContent);
+                XmlElement root = xmlDoc.DocumentElement;
+                if (root != null && root.HasAttribute("filename"))
                 {
-                    break;
-                }
-                end++;
-            }
+                    product = root.GetAttribute("filename");
 
-            product = "";
-            for (int i = start; i < end; i++)
-            {
-                product += splits[i];
-                product += "_";
+                }
+                else
+                {
+                    Console.WriteLine("Attribute not found.");
+                }
+
+                string[] splits = product.Split('_');
+                string pattern = @"V\dR\d";
+                Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
+                int start = 1;
+                int end = 0;
+                foreach (string str in splits)
+                {
+                    if (regex.IsMatch(str))
+                    {
+                        break;
+                    }
+                    end++;
+                }
+
+                product = "";
+                for (int i = start; i < end; i++)
+                {
+                    product += splits[i];
+                    product += "_";
+                }
+
+                product = product.Replace("_STIG", "");
             }
-            
-            product = product.Replace("_STIG", "");
+            catch (Exception ex)
+            {
+                product = ex.Message;
+            }
             return product.TrimEnd('_');
 
         }
         static string GetPostProcessedVersion(string data)
         {
-            Regex regex = new Regex(@"\d.\d+.xml", RegexOptions.IgnoreCase);
-            Match match = regex.Match(data);
-            string value = match.Value;
-            string newData = value.Replace(".xml","");
-            return newData;
+            string newVersion = "";
+            try
+            {
+                Regex regex = new Regex(@"\d.\d+.xml", RegexOptions.IgnoreCase);
+                Match match = regex.Match(data);
+                string value = match.Value;
+                newVersion = value.Replace(".xml", "");
+            }
+            catch (Exception ex)
+            {
+                newVersion = ex.Message;
+            }
+            return newVersion;
         }
         static ArrayList GetPreProcessedStigs(string FolderPath)
         {
             // get all .xml files excluding org files
             ArrayList fullRules = new ArrayList();
-            string[] files = Directory.GetFiles(FolderPath, "*", SearchOption.AllDirectories);
-            var filteredFiles = files.Where(file => Path.GetFileName(file).Contains("-xccdf.xml"));
 
-            foreach (string file in filteredFiles)
+            try
             {
-                if(file.ToLower().Contains("rhel"))
-                {
-                    string temp = "";
-                }
-                string content = File.ReadAllText(file);
+                string[] files = Directory.GetFiles(FolderPath, "*", SearchOption.AllDirectories);
+                var filteredFiles = files.Where(file => Path.GetFileName(file).Contains("-xccdf.xml"));
 
-                Stig stig = GetVRules(content, file, GetPreProcessedVersion(file));
-                stig.Product = GetPreProcessedProduct(file);
-                stig.Company = GetPreProcessedCompany(file);
-                fullRules.Add(stig);
+                foreach (string file in filteredFiles)
+                {
+                    if (file.ToLower().Contains("rhel"))
+                    {
+                        string temp = "";
+                    }
+                    string content = File.ReadAllText(file);
+
+                    Stig stig = GetVRules(content, file, GetPreProcessedVersion(file));
+                    stig.Product = GetPreProcessedProduct(file);
+                    stig.Company = GetPreProcessedCompany(file);
+                    fullRules.Add(stig);
+                }
+            }
+            catch (Exception ex)
+            {
+                fullRules.Add(ex.Message);
             }
 
             return fullRules;
@@ -178,16 +233,24 @@ namespace ParseXccdf
         {
             // get all .xml files excluding org files
             ArrayList fullRules = new ArrayList();
-            string[] processessedFiles = Directory.GetFiles(XMLFolderPath, "*", SearchOption.AllDirectories);
-            var filteredFiles = processessedFiles.Where(file => !Path.GetFileName(file).Contains("org"));
 
-            foreach (string file in filteredFiles)
+            try
             {
-                Stig stig = GetVRules(File.ReadAllText(file), file, GetPostProcessedVersion(file));
-                stig.Product = GetPostProcessedProduct(file);
-                stig.Company = GetPostProcessedCompany(file);
+                string[] processessedFiles = Directory.GetFiles(XMLFolderPath, "*", SearchOption.AllDirectories);
+                var filteredFiles = processessedFiles.Where(file => !Path.GetFileName(file).Contains("org"));
 
-                fullRules.Add(stig);
+                foreach (string file in filteredFiles)
+                {
+                    Stig stig = GetVRules(File.ReadAllText(file), file, GetPostProcessedVersion(file));
+                    stig.Product = GetPostProcessedProduct(file);
+                    stig.Company = GetPostProcessedCompany(file);
+
+                    fullRules.Add(stig);
+                }
+            }
+            catch (Exception ex)
+            {
+                fullRules.Add (ex.Message);
             }
 
             return fullRules;
@@ -339,15 +402,51 @@ namespace ParseXccdf
         }
         static void Main(string[] args)
         {
+            var argDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            string preprocessedFolderPath = String.Empty;
+            string postprocessedFolderPath = String.Empty;
 
-            string xmlFolderPath = "C:\\git\\PowerStig\\source\\StigData\\Processed";
-            string xccdFolderPath = "C:\\git\\PowerStig\\source\\StigData\\Archive";
+            for (int i = 0; i < args.Length; i += 2)
+            {
+                if (i + 1 < args.Length)
+                {
+                    argDictionary[args[i]] = args[i + 1];
+                }
+            }
 
-            ArrayList xccdList = GetPreProcessedStigs(xccdFolderPath);
-            ArrayList xmlList = GetPostProcessedStigs(xmlFolderPath);
+            if (argDictionary.TryGetValue("--preprocessedFolderPath", out string preFolderPathArg))
+            {
+                preprocessedFolderPath = preFolderPathArg;
+            }
+
+            if (argDictionary.TryGetValue("--postprocessedFolderPath", out string postFolderPathArg))
+            {
+                postprocessedFolderPath = postFolderPathArg;
+            }
+
+            if (preprocessedFolderPath.Length <= 0 && postprocessedFolderPath.Length <= 0)
+            {
+                Console.WriteLine("Enter a --PreProcessedFolderPath and a --PostProcessedFolderPath to continue.");
+            }
+            else
+            {
+                ArrayList xccdList = GetPreProcessedStigs(preprocessedFolderPath);
+                ArrayList xmlList = GetPostProcessedStigs(postprocessedFolderPath);
+
+                try
+                {
+                    CompareStigLists(xccdList, xmlList);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            //string xmlFolderPath = "C:\\git\\PowerStig\\source\\StigData\\Processed";
+            //string xccdFolderPath = "C:\\git\\PowerStig\\source\\StigData\\Archive";
 
 
-            CompareStigLists(xccdList, xmlList);
+            
 
 
             // CompareStigLists(xccdList, xmlList);
