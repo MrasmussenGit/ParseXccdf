@@ -10,14 +10,14 @@ namespace ParseXccdf
 {
     internal class Stig
     {
-        private string[] VRules;
+        private List<string> VRules;
         private string FileNameAndPath;
         private string version;
         private string company;
         private string product;
         public Stig() { }
 
-        public string[] V_Rules
+        public List<string> V_Rules
         {
             set { VRules = value; }
             get { return VRules; }

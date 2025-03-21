@@ -29,9 +29,10 @@ namespace ParseXccdf
 
             return attributeValues;
         }
-        static Stig GetVRules(string XMLContent, string FilePath, string Version)
+        static Stig GetStig(string FilePath)
         {
-            XElement root = XElement.Parse(XMLContent);
+
+            XElement root = XElement.Parse(File.ReadAllText(FilePath));
             string pattern = @"v-\d{3,6}$|v-\d{3,6}\.\w$";
             Regex regex = new Regex(pattern);
 
@@ -44,9 +45,59 @@ namespace ParseXccdf
 
             Stig stig = new Stig();
             stig.FilePath = FilePath;
-            stig.V_Rules = attributeValues.ToArray();
-            stig.StigVersion = Version;
+            stig.V_Rules = attributeValues;
+            stig.StigVersion = GetStigVersion(FilePath);
             return stig;
+        }
+
+        static ArrayList GetStigs(string FolderPath)
+        {
+
+
+            return new ArrayList();
+        }
+        static string GetStigVersion(string StigFilePath)
+        {
+            string returnVersion = "";
+            if(StigFilePath.ToLower().Contains("xccdf"))
+            {
+                try
+                {
+                    Regex regex = new Regex(@"V\dR\d", RegexOptions.IgnoreCase);
+                    string[] preSplit = StigFilePath.Split('_');
+                    int i = 0;
+                    foreach (string str in preSplit)
+                    {
+                        if (regex.IsMatch(str)) { break; }
+                        i++;
+                    }
+                    returnVersion = preSplit[i];
+                    returnVersion = returnVersion.Trim('V');
+                    returnVersion = returnVersion.Replace('R', '.');
+                }
+                catch (Exception ex)
+                {
+                    returnVersion = ex.Message;
+                }
+            }
+            else
+            {
+                try
+                {
+                    Regex regex = new Regex(@"\d.\d+.xml", RegexOptions.IgnoreCase);
+                    Match match = regex.Match(StigFilePath);
+                    string value = match.Value;
+                    returnVersion = value.Replace(".xml", "");
+                }
+                catch (Exception ex)
+                {
+                    returnVersion = ex.Message;
+                }
+            }
+
+
+
+            return returnVersion;
         }
         static string GetPreProcessedCompany(string data)
         {
@@ -98,30 +149,6 @@ namespace ParseXccdf
             }
 
             return product.TrimEnd('_');
-        }
-        static string GetPreProcessedVersion(string fileName)
-        {
-            string preSplitVersion = "";
-            try
-            {
-                Regex regex = new Regex(@"V\dR\d", RegexOptions.IgnoreCase);
-                string[] preSplit = fileName.Split('_');
-                int i = 0;
-                foreach (string str in preSplit)
-                {
-                    if (regex.IsMatch(str)) { break; }
-                    i++;
-                }
-                preSplitVersion = preSplit[i];
-                preSplitVersion = preSplitVersion.Trim('V');
-                preSplitVersion = preSplitVersion.Replace('R', '.');
-            }
-            catch (Exception ex)
-            {
-                preSplitVersion = ex.Message;
-            }
-
-            return preSplitVersion;
         }
         static string GetPostProcessedCompany(string data)
         {
@@ -192,22 +219,6 @@ namespace ParseXccdf
             return product.TrimEnd('_');
 
         }
-        static string GetPostProcessedVersion(string data)
-        {
-            string newVersion = "";
-            try
-            {
-                Regex regex = new Regex(@"\d.\d+.xml", RegexOptions.IgnoreCase);
-                Match match = regex.Match(data);
-                string value = match.Value;
-                newVersion = value.Replace(".xml", "");
-            }
-            catch (Exception ex)
-            {
-                newVersion = ex.Message;
-            }
-            return newVersion;
-        }
         static ArrayList GetPreProcessedStigs(string FolderPath)
         {
             // get all .xml files excluding org files
@@ -220,13 +231,7 @@ namespace ParseXccdf
 
                 foreach (string file in filteredFiles)
                 {
-                    if (file.ToLower().Contains("rhel"))
-                    {
-                        string temp = "";
-                    }
-                    string content = File.ReadAllText(file);
-
-                    Stig stig = GetVRules(content, file, GetPreProcessedVersion(file));
+                    Stig stig = GetStig(file);
                     stig.Product = GetPreProcessedProduct(file);
                     stig.Company = GetPreProcessedCompany(file);
                     fullRules.Add(stig);
@@ -251,10 +256,9 @@ namespace ParseXccdf
 
                 foreach (string file in filteredFiles)
                 {
-                    Stig stig = GetVRules(File.ReadAllText(file), file, GetPostProcessedVersion(file));
+                    Stig stig = GetStig(file);
                     stig.Product = GetPostProcessedProduct(file);
                     stig.Company = GetPostProcessedCompany(file);
-
                     fullRules.Add(stig);
                 }
             }
@@ -264,41 +268,6 @@ namespace ParseXccdf
             }
 
             return fullRules;
-        }
-        static bool FileNameMatch(string preProcessedFileName, string postProcessedFileName)
-        {
-            bool match = false;
-            Regex regex = new Regex(@"V\dR\d", RegexOptions.IgnoreCase);
-            string[] preSplit = preProcessedFileName.Split('_');
-            string[] postSplit = postProcessedFileName.Split('-');
-            int indexPost = postSplit[0].IndexOf(preSplit[1]);
-            string company = postSplit[0].Substring(indexPost, postSplit[0].Length - indexPost);
-
-            if (company.ToLower().Equals(preSplit[1].ToLower())) 
-            {
-                // match
-                // check version match
-
-                // get pre split version, location unknown
-                int i = 0;
-                foreach (string str in preSplit) 
-                {
-                    if(regex.IsMatch(str)) { match = true; break; }
-                    i++;
-                }
-                string preSplitVersion = preSplit[i];
-                preSplitVersion =  preSplitVersion.Trim('V');
-                preSplitVersion = preSplitVersion.Replace('R', '.');
-
-                string postSplitVersion = postSplit[2].Replace(".xml", "");
-
-                if(preSplitVersion.Equals(postSplitVersion))
-                {
-                    match = true;
-                }
-            }
-
-            return match;
         }
         static bool CompareRules(Stig Rule1, Stig Rule2)
         {
