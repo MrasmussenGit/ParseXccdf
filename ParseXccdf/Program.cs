@@ -12,7 +12,23 @@ namespace ParseXccdf
 {
     internal class Program
     {
+        static List<string> ListVRules(string FilePath)
+        {
+            var list = new List<string>();
+            File.ReadAllText(FilePath);
+            XElement root = XElement.Parse(File.ReadAllText(FilePath));
+            string pattern = @"v-\d{3,6}$|v-\d{3,6}\.\w$";
+            Regex regex = new Regex(pattern);
 
+            var elements = from el in root.Descendants()
+                           where el.Attribute("id") != null &&
+                           regex.IsMatch(el.Attribute("id").Value.ToLower())
+                           select el.Attribute("id");
+
+            List<string> attributeValues = elements.Select(attr => attr.Value).ToList();
+
+            return attributeValues;
+        }
         static Stig GetVRules(string XMLContent, string FilePath, string Version)
         {
             XElement root = XElement.Parse(XMLContent);
@@ -396,6 +412,11 @@ namespace ParseXccdf
         }
         static void Main(string[] args)
         {
+
+            /*
+             Command line 
+            --preprocessedFolderPath "C:\git\PowerStig\source\StigData\Archive" --PostProcessedFolderPath "C:\git\PowerStig\source\StigData\Processed"
+             */
             var argDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             string preprocessedFolderPath = String.Empty;
             string postprocessedFolderPath = String.Empty;
@@ -407,33 +428,46 @@ namespace ParseXccdf
                     argDictionary[args[i]] = args[i + 1];
                 }
             }
-
-            if (argDictionary.TryGetValue("--preprocessedFolderPath", out string preFolderPathArg))
+            // list rules of a pre or post processed xml
+            if (argDictionary.TryGetValue("--listRulesFilePath", out string ruleFile))
             {
-                preprocessedFolderPath = preFolderPathArg;
-            }
-
-            if (argDictionary.TryGetValue("--postprocessedFolderPath", out string postFolderPathArg))
-            {
-                postprocessedFolderPath = postFolderPathArg;
-            }
-
-            if (preprocessedFolderPath.Length <= 0 && postprocessedFolderPath.Length <= 0)
-            {
-                Console.WriteLine("Enter a --PreProcessedFolderPath and a --PostProcessedFolderPath to continue.");
+                Console.WriteLine($"Rules in file: {ruleFile}");
+                //string[] rules = ListVRules(ruleFile);
+                List<string> ruleList = ListVRules(ruleFile);
+                foreach (string rule in ruleList)
+                {
+                    Console.WriteLine($"{rule}");
+                }
             }
             else
             {
-                ArrayList xccdList = GetPreProcessedStigs(preprocessedFolderPath);
-                ArrayList xmlList = GetPostProcessedStigs(postprocessedFolderPath);
-
-                try
+                if (argDictionary.TryGetValue("--preprocessedFolderPath", out string preFolderPathArg))
                 {
-                    CompareStigLists(xccdList, xmlList);
+                    preprocessedFolderPath = preFolderPathArg;
                 }
-                catch (Exception ex)
+
+                if (argDictionary.TryGetValue("--postprocessedFolderPath", out string postFolderPathArg))
                 {
-                    Console.WriteLine(ex.Message);
+                    postprocessedFolderPath = postFolderPathArg;
+                }
+
+                if (preprocessedFolderPath.Length <= 0 && postprocessedFolderPath.Length <= 0)
+                {
+                    Console.WriteLine("Enter a --PreProcessedFolderPath and a --PostProcessedFolderPath to continue.");
+                }
+                else
+                {
+                    ArrayList xccdList = GetPreProcessedStigs(preprocessedFolderPath);
+                    ArrayList xmlList = GetPostProcessedStigs(postprocessedFolderPath);
+
+                    try
+                    {
+                        CompareStigLists(xccdList, xmlList);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
                 }
             }
         }
