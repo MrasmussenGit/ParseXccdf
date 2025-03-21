@@ -3,22 +3,32 @@ using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
-using System.Runtime.InteropServices;
 using System.Data;
-using System.Web;
-using System.Runtime.CompilerServices;
-using System.Net.Http.Headers;
 
 namespace ParseXccdf
 {
     internal class Program
     {
+        static List<string> ListVRules(string FilePath)
+        {
+            var list = new List<string>();
+            File.ReadAllText(FilePath);
+            XElement root = XElement.Parse(File.ReadAllText(FilePath));
+            string pattern = @"v-\d{3,6}$|v-\d{3,6}\.\w$";
+            Regex regex = new Regex(pattern);
 
+            var elements = from el in root.Descendants()
+                           where el.Attribute("id") != null &&
+                           regex.IsMatch(el.Attribute("id").Value.ToLower())
+                           select el.Attribute("id");
+
+            List<string> attributeValues = elements.Select(attr => attr.Value).ToList();
+
+            return attributeValues;
+        }
         static Stig GetVRules(string XMLContent, string FilePath, string Version)
         {
             XElement root = XElement.Parse(XMLContent);
@@ -402,6 +412,11 @@ namespace ParseXccdf
         }
         static void Main(string[] args)
         {
+
+            /*
+             Command line 
+            --preprocessedFolderPath "C:\git\PowerStig\source\StigData\Archive" --PostProcessedFolderPath "C:\git\PowerStig\source\StigData\Processed"
+             */
             var argDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             string preprocessedFolderPath = String.Empty;
             string postprocessedFolderPath = String.Empty;
@@ -413,96 +428,48 @@ namespace ParseXccdf
                     argDictionary[args[i]] = args[i + 1];
                 }
             }
-
-            if (argDictionary.TryGetValue("--preprocessedFolderPath", out string preFolderPathArg))
+            // list rules of a pre or post processed xml
+            if (argDictionary.TryGetValue("--listRulesFilePath", out string ruleFile))
             {
-                preprocessedFolderPath = preFolderPathArg;
-            }
-
-            if (argDictionary.TryGetValue("--postprocessedFolderPath", out string postFolderPathArg))
-            {
-                postprocessedFolderPath = postFolderPathArg;
-            }
-
-            if (preprocessedFolderPath.Length <= 0 && postprocessedFolderPath.Length <= 0)
-            {
-                Console.WriteLine("Enter a --PreProcessedFolderPath and a --PostProcessedFolderPath to continue.");
-            }
-            else
-            {
-                ArrayList xccdList = GetPreProcessedStigs(preprocessedFolderPath);
-                ArrayList xmlList = GetPostProcessedStigs(postprocessedFolderPath);
-
-                try
+                Console.WriteLine($"Rules in file: {ruleFile}");
+                //string[] rules = ListVRules(ruleFile);
+                List<string> ruleList = ListVRules(ruleFile);
+                foreach (string rule in ruleList)
                 {
-                    CompareStigLists(xccdList, xmlList);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-            }
-            //string xmlFolderPath = "C:\\git\\PowerStig\\source\\StigData\\Processed";
-            //string xccdFolderPath = "C:\\git\\PowerStig\\source\\StigData\\Archive";
-
-
-            
-
-
-            // CompareStigLists(xccdList, xmlList);
-
-
-
-            //string convertedXMLPath = "C:\\git\\PowerStig\\source\\StigData\\Processed\\Adobe-AcrobatPro-2.1.xml";
-            //string convertedXMLContent = File.ReadAllText(convertedXMLPath);
-
-            //string XccdfFilePath = @"C:\PowerStigRHEL\U_Oracle_Linux_8_STIG_V2R3_Manual-xccdf.xml";
-            //string XccdfFilePath = @"C:\PowerStigRHEL\test\U_Adobe_Acrobat_Pro_DC_Continuous_V2R1_Manual-xccdf.xml";
-            //string XccdXmlContent = File.ReadAllText(XccdfFilePath);
-
-            // compare the rules in coverted to archived.  All rules should be accounted for
-            //string[] convertedRules = GetConvertedRules(xmlFolderPath);
-            //string[] xccdfRules = GetXCCDFRules(xccdfFolderPath);
-
-
-
-
-
-            //XmlDocument doc = new XmlDocument();
-            //doc.LoadXml(xmlContent);
-            //List<string> xccdfRules = GetVRules(XccdXmlContent);
-            //List<string> convertedRules = GetVRules(convertedXMLContent);
-
-            //List<string> uniqueToXccdf = xccdfRules.Except(convertedRules).ToList();
-            //List<string> uniqueToConvertedXML = convertedRules.Except(xccdfRules).ToList();
-            /*
-            Console.WriteLine("Only in XCCDF:");
-            if(uniqueToXccdf.Count > 0)
-            {
-                foreach (var rule in uniqueToXccdf)
-                {
-                    Console.WriteLine("\t" + rule);
+                    Console.WriteLine($"{rule}");
                 }
             }
             else
             {
-                Console.WriteLine("\tNone");
-            }
-
-            Console.WriteLine("Only in XML");
-            if (uniqueToConvertedXML.Count > 0)
-            {
-                foreach (var rule in uniqueToConvertedXML)
+                if (argDictionary.TryGetValue("--preprocessedFolderPath", out string preFolderPathArg))
                 {
-                    Console.WriteLine("\t" + rule);
+                    preprocessedFolderPath = preFolderPathArg;
+                }
+
+                if (argDictionary.TryGetValue("--postprocessedFolderPath", out string postFolderPathArg))
+                {
+                    postprocessedFolderPath = postFolderPathArg;
+                }
+
+                if (preprocessedFolderPath.Length <= 0 && postprocessedFolderPath.Length <= 0)
+                {
+                    Console.WriteLine("Enter a --PreProcessedFolderPath and a --PostProcessedFolderPath to continue.");
+                }
+                else
+                {
+                    ArrayList xccdList = GetPreProcessedStigs(preprocessedFolderPath);
+                    ArrayList xmlList = GetPostProcessedStigs(postprocessedFolderPath);
+
+                    try
+                    {
+                        CompareStigLists(xccdList, xmlList);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
                 }
             }
-            else
-            {
-                Console.WriteLine("\tNone");
-            }
-            */
-
         }
     }
 }
