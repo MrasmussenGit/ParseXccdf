@@ -12,6 +12,91 @@ namespace ParseXccdf
 {
     internal class Program
     {
+        static List<Rule> PopulateRules(string FilePath)
+        {
+            List<Rule> rules = new List<Rule>();
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load(FilePath);
+
+            XmlNodeList groupRules = xmlDoc.GetElementsByTagName("Group");
+
+            foreach(XmlNode node in groupRules)
+            {
+                Rule rule = new Rule();
+                
+                foreach (XmlNode child in node.ChildNodes)
+                {
+                    VRule vRule = new VRule();
+                    if (child.Name.ToLower() == "title")
+                    {
+                        rule.Title = child.InnerText;
+                    }
+                    else if (child.Name.ToLower() == "description")
+                    {
+                        rule.Description = child.InnerText;
+                    }
+                    else if (child.Name.ToLower() == "rule")
+                    {
+                        //vRule.RuleId = node.Attributes["id"].Value;
+                        vRule.Severity = child.Attributes["severity"].Value;
+                        vRule.GroupId = node.Attributes["id"].InnerText;
+                        foreach (XmlNode ruleChildNode in child.ChildNodes)
+                        {
+                            if (ruleChildNode.Name.ToLower() == "title")
+                            {
+                                vRule.RuleTitle = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "description")
+                            {
+                                vRule.RuleDescription = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "version")
+                            {
+                                vRule.Version = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "ident")
+                            {
+                                vRule.Identifiers.Add(ruleChildNode.InnerText);
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "fixtext")
+                            {
+                                vRule.FixText = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "fix")
+                            {
+                                vRule.FixId = ruleChildNode.Attributes["id"].InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "check")
+                            {
+                                vRule.CheckSystem = ruleChildNode.Attributes["system"].Value;
+                                foreach (XmlNode checkChildNode in ruleChildNode.ChildNodes)
+                                {
+                                    if (checkChildNode.Name.ToLower() == "check-content")
+                                    {
+                                        vRule.CheckContent = checkChildNode.InnerText;
+                                    }
+                                    else if (checkChildNode.Name.ToLower() == "check-content-ref")
+                                    {
+                                        vRule.CheckContentRefHref = checkChildNode.Attributes["href"].InnerText;
+                                    }
+                                }
+
+                            }
+                            else
+                            {
+                                string temp = ruleChildNode.InnerText;
+                            }
+                        }
+                        rule.Rules.Add(vRule);
+                    }
+                    rules.Add(rule);
+                }
+            }
+
+
+
+            return rules;
+        }
         static List<string> ListVRules(string FilePath)
         {
             var list = new List<string>();
@@ -41,15 +126,46 @@ namespace ParseXccdf
                            regex.IsMatch(el.Attribute("id").Value.ToLower())
                            select el.Attribute("id");
 
-            List<string> attributeValues = elements.Select(attr => attr.Value).ToList();
+            List<string> rules = elements.Select(attr => attr.Value).ToList();
+
+            //XmlNodeList groupRules = PopulateRules(FilePath);
+
+            List<Rule> newRuleList = PopulateRules(FilePath);
+
 
             Stig stig = new Stig();
             stig.FilePath = FilePath;
-            stig.V_Rules = attributeValues;
+            stig.V_Rules = rules;
+            stig.Product = GetPreProcessedProduct(FilePath);
+            stig.Company = GetPreProcessedCompany(FilePath);
             stig.StigVersion = GetStigVersion(FilePath);
+
+
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load(FilePath);
+
+            XmlNode benchmarkNode = xmlDoc.SelectSingleNode("*");
+
+            foreach(XmlNode node in benchmarkNode.ChildNodes)
+            {
+                if (node.Name.ToLower() == "title")
+                {
+                    stig.Title = node.InnerText;
+                }
+                else if(node.Name.ToLower() == "description")
+                {
+                    stig.Description = node.InnerText;
+                }
+            }
+            // Get the attribute value
+            //if (specificNode != null && specificNode.Attributes["attributeName"] != null)
+            //{
+            //    string attributeValue = specificNode.Attributes["attributeName"].Value;
+            //    Console.WriteLine($"Attribute Value: {attributeValue}");
+           //}
+
             return stig;
         }
-
         static ArrayList GetStigs(string FolderPath)
         {
 
@@ -228,12 +344,9 @@ namespace ParseXccdf
             {
                 string[] files = Directory.GetFiles(FolderPath, "*", SearchOption.AllDirectories);
                 var filteredFiles = files.Where(file => Path.GetFileName(file).Contains("-xccdf.xml"));
-
                 foreach (string file in filteredFiles)
                 {
                     Stig stig = GetStig(file);
-                    stig.Product = GetPreProcessedProduct(file);
-                    stig.Company = GetPreProcessedCompany(file);
                     fullRules.Add(stig);
                 }
             }
@@ -385,6 +498,7 @@ namespace ParseXccdf
             /*
              Command line 
             --preprocessedFolderPath "C:\git\PowerStig\source\StigData\Archive" --PostProcessedFolderPath "C:\git\PowerStig\source\StigData\Processed"
+            --listRulesFilePath "C:\git\PowerStig\source\StigData\Archive\Linux.RHEL\U_RHEL_9_STIG_V2R3_Manual-xccdf.xml"
              */
             var argDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             string preprocessedFolderPath = String.Empty;

@@ -11,6 +11,8 @@ namespace ParseXccdf
     internal class Stig
     {
         private List<string> VRules;
+        private string title;
+        private string description;
         private string FileNameAndPath;
         private string version;
         private string company;
@@ -22,7 +24,16 @@ namespace ParseXccdf
             set { VRules = value; }
             get { return VRules; }
         }
-
+        public string Description
+        {
+            get { return description; }
+            set { description = value; }
+        }
+        public string Title
+        {
+            get { return title; }
+            set { title = value; }
+        }
         public string FilePath
         {
             set {  FileNameAndPath = value; }
