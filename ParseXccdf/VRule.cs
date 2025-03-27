@@ -21,10 +21,12 @@ namespace ParseXccdf
         private string checkContentRefHref;
         private string checkContent;
 
+
         public VRule()
         {
             identifiers = new List<string>();
         }
+        
         public string GroupId
         {
             get { return groupId; }

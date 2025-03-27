@@ -12,8 +12,64 @@ namespace ParseXccdf
 {
     internal class Program
     {
-        static List<Rule> PopulateRules(string FilePath)
+        static List<PostProcessedVRule> PopulatePostProcessedRules(string FilePath)
         {
+            // check if this is the xccdf file and not the post processed version.
+            List<PostProcessedVRule> rules = new List<PostProcessedVRule>();
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load(FilePath);
+
+            XmlNodeList groupRules = xmlDoc.GetElementsByTagName("Rule");
+
+            foreach (XmlNode node in groupRules)
+            {
+                PostProcessedVRule ppvr = new PostProcessedVRule();   
+                ppvr.RuleId = node.Attributes["id"].InnerText;
+                ppvr.Severity = node.Attributes["severity"].InnerText;
+                ppvr.RuleTitle = node.Attributes["title"].InnerText;
+                ppvr.DscResource = node.Attributes["dscresource"].InnerText;
+                ppvr.FilePath = FilePath;
+
+                foreach (XmlNode child in node.ChildNodes)
+                {
+                    
+                    if (child.Name.ToLower() == "duplicateof")
+                    {
+                        ppvr.DuplicateOf = child.InnerText;
+                    }
+                    else if (child.Name.ToLower() == "description")
+                    {
+                        ppvr.RuleDescription = child.InnerText;
+                    }
+                    else if(child.Name.ToLower() == "legacyid")
+                    {
+                        ppvr.LegacyId = child.InnerText;
+                    }
+                    else if (child.Name.ToLower() == "organizationalvaluerequired")
+                    {
+                        ppvr.OrganizationalValueRequired =  bool.Parse(child.InnerText);
+                    }
+                    else if (child.Name.ToLower() == "rawstring")
+                    {
+                        ppvr.RawString = child.InnerText;
+                    }
+                    else if (child.Name.ToLower() == "isnullorempty")
+                    {
+                        ppvr.IsNullOrEmpty = child.InnerText;
+                    }
+                }
+                // before adding to list, populat dscResource specific stuff, so else if on DscResource
+                rules.Add(ppvr);
+            }
+
+
+
+            return rules;
+        }
+        static List<Rule> PopulatePreProcessedRules(string FilePath)
+        {
+            // check if this is the xccdf file and not the post processed version.
+
             List<Rule> rules = new List<Rule>();
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(FilePath);
@@ -23,7 +79,7 @@ namespace ParseXccdf
             foreach(XmlNode node in groupRules)
             {
                 Rule rule = new Rule();
-                
+                rule.FilePath = FilePath;
                 foreach (XmlNode child in node.ChildNodes)
                 {
                     VRule vRule = new VRule();
@@ -89,11 +145,9 @@ namespace ParseXccdf
                         }
                         rule.Rules.Add(vRule);
                     }
-                    rules.Add(rule);
                 }
+                rules.Add(rule);
             }
-
-
 
             return rules;
         }
@@ -114,28 +168,53 @@ namespace ParseXccdf
 
             return attributeValues;
         }
-        static Stig GetStig(string FilePath)
+
+        static Stig GetPostProcessedStig(string FilePath)
         {
 
-            XElement root = XElement.Parse(File.ReadAllText(FilePath));
-            string pattern = @"v-\d{3,6}$|v-\d{3,6}\.\w$";
-            Regex regex = new Regex(pattern);
-
-            var elements = from el in root.Descendants()
-                           where el.Attribute("id") != null &&
-                           regex.IsMatch(el.Attribute("id").Value.ToLower())
-                           select el.Attribute("id");
-
-            List<string> rules = elements.Select(attr => attr.Value).ToList();
-
-            //XmlNodeList groupRules = PopulateRules(FilePath);
-
-            List<Rule> newRuleList = PopulateRules(FilePath);
+            List<PostProcessedVRule> newRuleList = PopulatePostProcessedRules(FilePath);
 
 
             Stig stig = new Stig();
             stig.FilePath = FilePath;
-            stig.V_Rules = rules;
+            stig.PostProcessRules = newRuleList;
+            stig.Product = GetPostProcessedProduct(FilePath);
+            stig.Company = GetPostProcessedCompany(FilePath);
+            stig.StigVersion = GetStigVersion(FilePath);
+
+
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load(FilePath);
+
+            XmlNode benchmarkNode = xmlDoc.SelectSingleNode("*");
+
+            foreach (XmlNode node in benchmarkNode.ChildNodes)
+            {
+                if (node.Name.ToLower() == "title")
+                {
+                    stig.Title = node.InnerText;
+                }
+                else if (node.Name.ToLower() == "description")
+                {
+                    stig.Description = node.InnerText;
+                }
+            }
+            // Get the attribute value
+            //if (specificNode != null && specificNode.Attributes["attributeName"] != null)
+            //{
+            //    string attributeValue = specificNode.Attributes["attributeName"].Value;
+            //    Console.WriteLine($"Attribute Value: {attributeValue}");
+            //}
+
+            return stig;
+        }
+        static Stig GetPreProcessedStig(string FilePath)
+        {
+            List<Rule> newRuleList = PopulatePreProcessedRules(FilePath);
+
+            Stig stig = new Stig();
+            stig.FilePath = FilePath;
+            stig.Rules = newRuleList;
             stig.Product = GetPreProcessedProduct(FilePath);
             stig.Company = GetPreProcessedCompany(FilePath);
             stig.StigVersion = GetStigVersion(FilePath);
@@ -346,7 +425,8 @@ namespace ParseXccdf
                 var filteredFiles = files.Where(file => Path.GetFileName(file).Contains("-xccdf.xml"));
                 foreach (string file in filteredFiles)
                 {
-                    Stig stig = GetStig(file);
+                    Stig stig = GetPreProcessedStig(file);
+                    stig.IsPostProcessed = false;
                     fullRules.Add(stig);
                 }
             }
@@ -369,9 +449,10 @@ namespace ParseXccdf
 
                 foreach (string file in filteredFiles)
                 {
-                    Stig stig = GetStig(file);
+                    Stig stig = GetPostProcessedStig(file);
                     stig.Product = GetPostProcessedProduct(file);
                     stig.Company = GetPostProcessedCompany(file);
+                    stig.IsPostProcessed = true;
                     fullRules.Add(stig);
                 }
             }
@@ -382,6 +463,7 @@ namespace ParseXccdf
 
             return fullRules;
         }
+        /*
         static bool CompareRules(Stig Rule1, Stig Rule2)
         {
             bool match = false;
@@ -395,10 +477,10 @@ namespace ParseXccdf
             {
                 string temp = "";
             }
-            foreach (string rule1 in Rule1.V_Rules)
+            foreach (Rule rule1 in Rule1.V_Rules)
             {
                 match = false;
-                regex.Match(rule1);
+                regex.Match(rule1.);
                 newRule1 = regex.Match(rule1).Value;
 
                 
@@ -446,50 +528,11 @@ namespace ParseXccdf
             return match;
 
         }
-        static void CompareStigLists(ArrayList PreProcessedList, ArrayList PostProcessedList)
+        */
+        static void CompareStigLists(List<Stig> PreProcessedList, List<Stig> PostProcessedList)
         {
-            // for each preprocessed
-            // find file name match in postProcessedList
-            // compare rule list
-            bool match = false;
-            string ruleName = "";
-            Console.WriteLine("Comparing lists");
 
-            foreach(Stig preRule in PreProcessedList)
-            {
-                foreach(Stig postRule in PostProcessedList)
-                {
-                    // if product and version match, we found the objects to compare
-                    if(preRule.Product.ToLower().Equals(postRule.Product.ToLower()))
-                    {
-                        if(preRule.StigVersion.Equals(postRule.StigVersion))
-                        {
-                            Console.WriteLine($"Comparing {preRule.FilePath} to file {postRule.FilePath} ");
-                            // compare rules list, report on issues
-                            if (CompareRules(preRule, postRule))
-                            {
-                                match = true;
-                                ruleName = postRule.FilePath;
-                            }
-                        }
-                    }
-                    if (match) { break; }
-                    
-
-                    // isolate the file names of each
-                    // look for manufacture/product/version?
-                }
-                if (match) 
-                {
-                    string[] postSplits = ruleName.Split('\\');
-                    string[] preSplits = preRule.FilePath.Split('\\');
-                    //Console.WriteLine($"XCCDF {preSplits[preSplits.Length - 1]} matched to XML {postSplits[postSplits.Length - 1]}");
-                    match = false;
-                }
-
-            }
-
-            Console.WriteLine("Compare completed");
+            Stig.CompareStigLists(PreProcessedList, PostProcessedList);
 
         }
         static void Main(string[] args)
@@ -545,7 +588,7 @@ namespace ParseXccdf
 
                     try
                     {
-                        CompareStigLists(xccdList, xmlList);
+                        CompareStigLists(xccdList.Cast<Stig>().ToList(), xmlList.Cast<Stig>().ToList());
                     }
                     catch (Exception ex)
                     {
