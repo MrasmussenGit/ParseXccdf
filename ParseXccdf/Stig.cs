@@ -20,9 +20,11 @@ namespace ParseXccdf
         private string version;
         private string company;
         private string product;
+        private string officeYear;
         private string officeProduct;
         private string purpose;
         private bool isPostProcessed;
+        private bool isOfficeProduct;
         public Stig() { }
 
         public List<Rule> Rules
@@ -86,7 +88,16 @@ namespace ParseXccdf
             get { return officeProduct; }
             set { officeProduct = value; }
         }
-
+        public string OfficeYear
+        {
+            set { officeYear = value; }
+            get { return officeYear; }
+        }
+        public bool IsOfficeProduct
+        {
+            get { return isOfficeProduct; }
+            set { isOfficeProduct = value; }
+        }
 
 
         public static bool PercentageOfStigRulesMatch(Stig PreStig, Stig PostStig, int Percentage)
@@ -205,6 +216,16 @@ namespace ParseXccdf
                 }
             }
             return purpose;
+        }
+
+        public static string GetOfficeYear(string FileName)
+        {
+            string pattern = @"\d{4}";
+            Regex regex = new Regex(pattern);
+            Match match = regex.Match(FileName);
+
+     
+            return match.Value;
         }
 
         public static string GetOfficeProduct(string FileName)

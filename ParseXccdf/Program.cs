@@ -178,6 +178,27 @@ namespace ParseXccdf
 
             return attributeValues;
         }
+        static string[] GetPreStigTitleAndDescription(string FilePath)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+            string[] returnList = new string[2];
+            xmlDoc.Load(FilePath);
+
+            XmlNode benchmarkNode = xmlDoc.SelectSingleNode("*");
+
+            foreach (XmlNode node in benchmarkNode.ChildNodes)
+            {
+                if (node.Name.ToLower() == "title")
+                {
+                    returnList[0] = node.InnerText;
+                }
+                else if (node.Name.ToLower() == "description")
+                {
+                    returnList[1] = node.InnerText;
+                }
+            }
+            return returnList;
+        }
         static Stig GetPostProcessedStig(string FilePath)
         {
 
@@ -219,38 +240,24 @@ namespace ParseXccdf
         }
         static Stig GetPreProcessedStig(string FilePath)
         {
-            List<Rule> newRuleList = PopulatePreProcessedRules(FilePath);
             Stig stig = new Stig();
             stig.FilePath = FilePath;
-            stig.Rules = newRuleList;
-            stig.Product = GetPreProcessedProduct(FilePath);
-            stig.Company = GetPreProcessedCompany(FilePath);
+            stig.Rules = PopulatePreProcessedRules(FilePath);
+            stig.Product = GetPreProcessedProduct(FilePath, ref stig);
+            // could move this to the GetPreProcessedProduct function
+            if (stig.IsOfficeProduct) 
+            { 
+                stig.OfficeYear = Stig.GetOfficeYear(FilePath); 
+            }
+            else
+            {
+                stig.Company = GetPreProcessedCompany(FilePath);
+            }
             stig.StigVersion = GetStigVersion(FilePath);
             stig.Purpose = GetPreProcessedPurpose(FilePath);
-
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.Load(FilePath);
-
-            XmlNode benchmarkNode = xmlDoc.SelectSingleNode("*");
-
-            foreach(XmlNode node in benchmarkNode.ChildNodes)
-            {
-                if (node.Name.ToLower() == "title")
-                {
-                    stig.Title = node.InnerText;
-                }
-                else if(node.Name.ToLower() == "description")
-                {
-                    stig.Description = node.InnerText;
-                }
-            }
-            // Get the attribute value
-            //if (specificNode != null && specificNode.Attributes["attributeName"] != null)
-            //{
-            //    string attributeValue = specificNode.Attributes["attributeName"].Value;
-            //    Console.WriteLine($"Attribute Value: {attributeValue}");
-           //}
-
+            string[] titleAndDescription = GetPreStigTitleAndDescription(FilePath);
+            stig.Title = titleAndDescription[0];
+            stig.Description = titleAndDescription[1];
             return stig;
         }
         static string GetStigVersion(string StigFilePath)
@@ -311,7 +318,7 @@ namespace ParseXccdf
             }
             return company;
         }
-        static string GetPreProcessedProduct(string data)
+        static string GetPreProcessedProduct(string data, ref Stig CurrentStig)
         {
             string product = "";
             try
@@ -324,9 +331,13 @@ namespace ParseXccdf
                 {
                     // get office year
                     product = officeProduct;
+                    CurrentStig.IsOfficeProduct = true;
+                    CurrentStig.OfficeYear = Stig.GetOfficeYear(data);
+                    CurrentStig.Company = "Microsoft";
                 }
                 else
                 {
+                    CurrentStig.IsOfficeProduct= false;
                     string pattern = @"V\dR\d";
                     Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
                     int start = 1;
