@@ -7,6 +7,8 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using System.Data;
+using System.Reflection;
+using System.Net.Http.Headers;
 
 namespace ParseXccdf
 {
@@ -29,35 +31,43 @@ namespace ParseXccdf
                 ppvr.RuleTitle = node.Attributes["title"].InnerText;
                 ppvr.DscResource = node.Attributes["dscresource"].InnerText;
                 ppvr.FilePath = FilePath;
-
-                foreach (XmlNode child in node.ChildNodes)
+                if (ppvr.RuleId.Contains('.'))
                 {
-                    
-                    if (child.Name.ToLower() == "duplicateof")
-                    {
-                        ppvr.DuplicateOf = child.InnerText;
-                    }
-                    else if (child.Name.ToLower() == "description")
-                    {
-                        ppvr.RuleDescription = child.InnerText;
-                    }
-                    else if(child.Name.ToLower() == "legacyid")
-                    {
-                        ppvr.LegacyId = child.InnerText;
-                    }
-                    else if (child.Name.ToLower() == "organizationalvaluerequired")
-                    {
-                        ppvr.OrganizationalValueRequired =  bool.Parse(child.InnerText);
-                    }
-                    else if (child.Name.ToLower() == "rawstring")
-                    {
-                        ppvr.RawString = child.InnerText;
-                    }
-                    else if (child.Name.ToLower() == "isnullorempty")
-                    {
-                        ppvr.IsNullOrEmpty = child.InnerText;
-                    }
+                    ppvr.TrimmedRuleId = ppvr.RuleId.Split('.')[0];
                 }
+                else
+                {
+                    ppvr.TrimmedRuleId = ppvr.RuleId;
+                }
+
+                    foreach (XmlNode child in node.ChildNodes)
+                    {
+
+                        if (child.Name.ToLower() == "duplicateof")
+                        {
+                            ppvr.DuplicateOf = child.InnerText;
+                        }
+                        else if (child.Name.ToLower() == "description")
+                        {
+                            ppvr.RuleDescription = child.InnerText;
+                        }
+                        else if (child.Name.ToLower() == "legacyid")
+                        {
+                            ppvr.LegacyId = child.InnerText;
+                        }
+                        else if (child.Name.ToLower() == "organizationalvaluerequired")
+                        {
+                            ppvr.OrganizationalValueRequired = bool.Parse(child.InnerText);
+                        }
+                        else if (child.Name.ToLower() == "rawstring")
+                        {
+                            ppvr.RawString = child.InnerText;
+                        }
+                        else if (child.Name.ToLower() == "isnullorempty")
+                        {
+                            ppvr.IsNullOrEmpty = child.InnerText;
+                        }
+                    }
                 // before adding to list, populat dscResource specific stuff, so else if on DscResource
                 rules.Add(ppvr);
             }
@@ -168,7 +178,6 @@ namespace ParseXccdf
 
             return attributeValues;
         }
-
         static Stig GetPostProcessedStig(string FilePath)
         {
 
@@ -181,7 +190,7 @@ namespace ParseXccdf
             stig.Product = GetPostProcessedProduct(FilePath);
             stig.Company = GetPostProcessedCompany(FilePath);
             stig.StigVersion = GetStigVersion(FilePath);
-
+            stig.Purpose = GetPostProcessedPurpose(FilePath);
 
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(FilePath);
@@ -211,14 +220,13 @@ namespace ParseXccdf
         static Stig GetPreProcessedStig(string FilePath)
         {
             List<Rule> newRuleList = PopulatePreProcessedRules(FilePath);
-
             Stig stig = new Stig();
             stig.FilePath = FilePath;
             stig.Rules = newRuleList;
             stig.Product = GetPreProcessedProduct(FilePath);
             stig.Company = GetPreProcessedCompany(FilePath);
             stig.StigVersion = GetStigVersion(FilePath);
-
+            stig.Purpose = GetPreProcessedPurpose(FilePath);
 
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(FilePath);
@@ -244,12 +252,6 @@ namespace ParseXccdf
            //}
 
             return stig;
-        }
-        static ArrayList GetStigs(string FolderPath)
-        {
-
-
-            return new ArrayList();
         }
         static string GetStigVersion(string StigFilePath)
         {
@@ -296,16 +298,18 @@ namespace ParseXccdf
         }
         static string GetPreProcessedCompany(string data)
         {
+            string company = "";
             try
             {
                 string[] splits = data.Split('_');
-                return splits[1];
+                company =  splits[1];
+                if (company == "MS") { company = "Microsoft"; }
             }
             catch (Exception ex)
             {
-                return ex.Message;
+                company = ex.Message;
             }
-
+            return company;
         }
         static string GetPreProcessedProduct(string data)
         {
@@ -314,24 +318,34 @@ namespace ParseXccdf
             {
                 string[] splits = data.Split('_');
 
-                string pattern = @"V\dR\d";
-                Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
-                int start = 1;
-                int end = 0;
-                
-                foreach (string str in splits)
+                // is it an office product
+                string officeProduct = Stig.GetOfficeProduct(data);
+                if(officeProduct != "")
                 {
-                    if (regex.IsMatch(str))
-                    {
-                        break;
-                    }
-                    end++;
+                    // get office year
+                    product = officeProduct;
                 }
-
-                for (int i = start; i < end; i++)
+                else
                 {
-                    product += splits[i];
-                    product += "_";
+                    string pattern = @"V\dR\d";
+                    Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
+                    int start = 1;
+                    int end = 0;
+
+                    foreach (string str in splits)
+                    {
+                        if (regex.IsMatch(str))
+                        {
+                            break;
+                        }
+                        end++;
+                    }
+
+                    for (int i = start; i < end; i++)
+                    {
+                        product += splits[i];
+                        product += "_";
+                    }
                 }
 
 
@@ -345,20 +359,74 @@ namespace ParseXccdf
 
             return product.TrimEnd('_');
         }
-        static string GetPostProcessedCompany(string data)
+        static string GetPostProcessedPurpose(string data)
         {
-            string returnParts = "";
+            string purpose = "";
             try
             {
-                string[] splits = data.Split('\\');
-                string[] parts = splits[splits.Count() - 1].Split('-');
-                returnParts =  parts[0];
+                string[] splits = data.Split('_');
+                purpose = splits[1];
+                if (purpose == "MS") { purpose = "Microsoft"; }
             }
             catch (Exception ex)
             {
-                returnParts = ex.Message;
+                purpose = ex.Message;
             }
-            return returnParts;
+            return purpose;
+        }
+        static string GetPreProcessedPurpose(string data)
+        {
+            string purpose = "";
+            try
+            {
+                string[] splitString = data.Split('\\');
+                string fileName = splitString[splitString.Length - 1];
+                if(fileName.ToLower().Contains("microsoft") || fileName.ToLower().Contains("windows") || fileName.ToLower().Contains("ms"))
+                {
+                    string temp = fileName;
+                }
+
+
+
+                string[] splits = fileName.Split('_');
+                purpose = splits[1];
+                if (purpose == "MS") { purpose = "Microsoft"; }
+            }
+            catch (Exception ex)
+            {
+                purpose = ex.Message;
+            }
+            return purpose;
+        }
+        static string GetPostProcessedCompany(string data)
+        {
+            string company = "";
+            try
+            {
+                XmlDocument xmlDoc = new XmlDocument();
+                xmlDoc.Load(data);
+                string stigId = xmlDoc.ChildNodes[0].Attributes["stigid"].Value;
+                if(!(stigId == ""))
+                {
+                    string[] companySplits = stigId.Split('_');
+                    company = companySplits[0];
+                    if(company == "Windows")
+                    {
+                        company = "Microsoft";
+                    }
+                }
+                else
+                {
+                    string[] splits = data.Split('\\');
+                    string[] parts = splits[splits.Count() - 1].Split('-');
+                    company = parts[0];
+                }
+            }
+            catch(Exception ex)
+            {
+                company = ex.Message;
+            }
+            return company;
 
         }
         static string GetPostProcessedProduct(string data)
@@ -463,76 +531,10 @@ namespace ParseXccdf
 
             return fullRules;
         }
-        /*
-        static bool CompareRules(Stig Rule1, Stig Rule2)
-        {
-            bool match = false;
-            string pattern = @"V-\d{3,6}";
-            
-            Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
-         
-            string newRule1 = "";
-            string newRule2 = "";
-            if(Rule1.FilePath.ToLower().Contains("rhel"))
-            {
-                string temp = "";
-            }
-            foreach (Rule rule1 in Rule1.V_Rules)
-            {
-                match = false;
-                regex.Match(rule1.);
-                newRule1 = regex.Match(rule1).Value;
-
-                
-                foreach (string rule2 in Rule2.V_Rules)
-                {
-                    regex.Match(rule2);
-                    newRule2 = regex.Match(rule2).Value;
-
-                  
-                    if (newRule1.Equals(newRule2)) 
-                    { 
-                        match = true;
-                        break;
-                    }
-                }
-                if(!match)
-                {
-                    Console.WriteLine($"{rule1} did not have a rule that matched in {Rule2.FilePath}");
-                }
-            }
-            foreach (string rule2 in Rule2.V_Rules)
-            {
-                match = false;
-                regex.Match(rule2);
-                newRule2 = regex.Match(rule2).Value;
-
-
-                foreach (string rule1 in Rule1.V_Rules)
-                {
-                    regex.Match(rule1);
-                    newRule1 = regex.Match(rule1).Value;
-
-
-                    if (newRule2.Equals(newRule1))
-                    {
-                        match = true;
-                        break;
-                    }
-                }
-                if (!match)
-                {
-                    Console.WriteLine($"{rule2} did not have a rule that matched in {Rule1.FilePath}");
-                }
-            }
-            return match;
-
-        }
-        */
         static void CompareStigLists(List<Stig> PreProcessedList, List<Stig> PostProcessedList)
         {
-
-            Stig.CompareStigLists(PreProcessedList, PostProcessedList);
+            bool ShowOnlyErrors = true;
+            Stig.CompareStigLists(PreProcessedList, PostProcessedList, ShowOnlyErrors);
 
         }
         static void Main(string[] args)

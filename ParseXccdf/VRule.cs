@@ -20,6 +20,7 @@ namespace ParseXccdf
         private string checkSystem;
         private string checkContentRefHref;
         private string checkContent;
+        private string trimmedRuleId;
 
 
         public VRule()
@@ -93,6 +94,12 @@ namespace ParseXccdf
         {
             get { return checkContent; }
             set { checkContent = value; }
+        }
+
+        public string TrimmedRuleId
+        {
+            get { return trimmedRuleId; }
+            set { trimmedRuleId = value; }
         }
 
     }

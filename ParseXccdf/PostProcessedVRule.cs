@@ -130,6 +130,70 @@ namespace ParseXccdf
             return returnArray;
         }
 
+        public static string[] CompareRuleToPostRuleLists(List<Rule> PreProcessedRules, List<PostProcessedVRule> PostProcessedRules, bool ShowOnlyErrors)
+        {
+            StringBuilder sb = new StringBuilder();
+            bool returnMatch = true;
+            string currentRuleId = "";
+            bool match = false;
+            string filePath = "";
+            if (!ShowOnlyErrors) { sb.AppendLine("Searching for rules in the XCCDF not located in the post-processed XML"); }
+            foreach (Rule preRule in PreProcessedRules)
+            {
+                foreach (PostProcessedVRule postRule in PostProcessedRules)
+                {
+                    // criteria that makes them equal
+                    currentRuleId = postRule.TrimmedRuleId;
+                    filePath = postRule.FilePath;
+                    if (preRule.Rules[0].GroupId == postRule.TrimmedRuleId)
+                    {
+                        match = true; break;
+                    }
+                }
+                if (!match)
+                {
+                    sb.AppendLine($"{preRule.Rules[0].GroupId} MISSING in {filePath}");
+                    returnMatch = false;
+                }
+                else
+                {
+                    if (!ShowOnlyErrors) { sb.AppendLine($"XCCDF rule:{preRule.Rules[0].GroupId} FOUND IN {filePath}"); }
+                }
+                match = false;
+            }
+            if (!ShowOnlyErrors) { sb.AppendLine("Search completed"); }
+            if (!ShowOnlyErrors) { sb.AppendLine("Searching for rules in the post-processed XML that are not in the XCCDF file"); }
+            foreach (PostProcessedVRule postRule in PostProcessedRules)
+            {
+                foreach (Rule preRule in PreProcessedRules)
+                {
+                    // criteria that makes them equal
+                    currentRuleId = preRule.Rules[0].GroupId;
+                    filePath = preRule.FilePath;
+                    if (postRule.TrimmedRuleId == preRule.Rules[0].GroupId)
+                    {
+                        match = true; break;
+                    }
+                }
+                if (!match)
+                {
+                    sb.AppendLine($"{postRule.TrimmedRuleId} MISSING in {filePath}");
+                    returnMatch = false;
+                }
+                else
+                {
+                    if (!ShowOnlyErrors) { sb.AppendLine($"Post process XML rule:{postRule.TrimmedRuleId} FOUND IN {filePath}"); }
+                }
+                match = false;
+            }
+            if (!ShowOnlyErrors) { sb.AppendLine("Search completed"); }
+            string[] returnArray = new string[2];
+            sb.AppendLine("");
+            returnArray[0] = sb.ToString();
+            returnArray[1] = returnMatch.ToString();
+            return returnArray;
+        }
+
         public static bool IsEqual(Rule Rule, PostProcessedVRule postProcessedVRule)
         {
             bool match = false;
