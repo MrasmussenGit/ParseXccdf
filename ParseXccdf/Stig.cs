@@ -17,6 +17,7 @@ namespace ParseXccdf
         private string title;
         private string description;
         private string FileNameAndPath;
+        private string originalFile;
         private string version;
         private string company;
         private string product;
@@ -25,8 +26,40 @@ namespace ParseXccdf
         private string purpose;
         private bool isPostProcessed;
         private bool isOfficeProduct;
+        private string classification;
+        private string releaseInfo;
+        private string notice;
+        private string source;
+        private string fullVersion;
+
+
         public Stig() { }
 
+        public string Classification
+        {
+            get { return classification; }
+            set { classification = value; }
+        }
+        public string ReleaseInfo
+        {
+            get { return releaseInfo; }
+            set { releaseInfo = value; }
+        }
+        public string Notice
+        {
+            get { return notice; }
+            set { notice = value; }
+        }
+        public string Source
+        {
+            get { return source; }
+            set { source = value; }
+        }
+        public string FullVersion
+        {
+            get { return fullVersion; }
+            set { fullVersion = value; }
+        }
         public List<Rule> Rules
         {
             set { rules = value; }
@@ -97,6 +130,12 @@ namespace ParseXccdf
         {
             get { return isOfficeProduct; }
             set { isOfficeProduct = value; }
+        }
+
+        public string OriginalFile
+        {
+            set { originalFile = value; }
+            get { return originalFile; }
         }
 
 
@@ -228,7 +267,7 @@ namespace ParseXccdf
             return match.Value;
         }
 
-        public static string GetOfficeProduct(string FileName)
+        public static string GetPreOfficeProduct(string FileName)
         {
             string lowerFileName = "";
             // office names to search for
@@ -291,6 +330,7 @@ namespace ParseXccdf
             bool match = false;
 
             // determine which is postProcessed
+
             foreach (Stig preStig in PreprocessedList)
             {
                 match = false;
@@ -298,33 +338,22 @@ namespace ParseXccdf
                 {
                     if (preStig.version == postStig.version)
                     {
-                        // handle office Stigs differently.  They use the same v rule numbers and version
-                        // so need to parse the product/filename to pull the exact office product in the Stig
-                        // also need to pull MS or DC, not from the prefix, but from the middle of the filename
-                        if(preStig.FileNameAndPath.ToLower().Contains("office") || preStig.FileNameAndPath.ToLower().Contains("windows"))
+                        if(preStig.OriginalFile.Contains('\\'))
                         {
-                            // does it contain an office product name?
-                            GetOfficeProduct(preStig.FileNameAndPath);
-                            string[] postParseResults = ParseFileName(preStig.FileNameAndPath);
-                            string[] preParseResults = ParseFileName(postStig.FileNameAndPath);
+                            string[] splits = preStig.OriginalFile.Split('\\');
+                            preStig.OriginalFile = splits[splits.Length - 1];
                         }
-
-
-
-
-
-                        if (postStig.FileNameAndPath.Contains("Office-PowerPoint2013-1.6.xml"))
+                        if(postStig.OriginalFile.Contains('\\'))
                         {
-                            string temp = "";
+                            string[] splits = postStig.OriginalFile.Split('\\');
+                            postStig.OriginalFile = splits[splits.Length - 1];
                         }
-                        if (Stig.PercentageOfStigRulesMatch(preStig, postStig, 25))
+                        if(postStig.OriginalFile == preStig.originalFile)
                         {
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.WriteLine($"{preStig.OriginalFile} MATCHED {postStig.FileNameAndPath}");
+                            Console.ForegroundColor = ConsoleColor.White;
                             match = true;
-                            if(postStig.FileNameAndPath.Contains("Office-PowerPoint2013-1.6.xml"))
-                            {
-                                string temp = "";
-                            }
-                            Console.WriteLine($"{preStig.FilePath} MATCHED {postStig.FilePath}");
                             string[] results = PostProcessedVRule.CompareRuleToPostRuleLists(preStig.Rules, postStig.PostProcessRules, ShowOnlyErrors);
                             bool listsMatched = bool.Parse(results[1]);
                             string messageOutput = results[0];
@@ -334,53 +363,17 @@ namespace ParseXccdf
                             }
                             break;
                         }
-                        else
-                        {
-                            match = false;
-                        }   
-                        match = true;
-                    }
 
+                    }
                 }
                 if (!match)
                 {
-                    Console.WriteLine($"{preStig.Product} version: {preStig.version} not found in Processed data");
+                    Console.WriteLine($"{preStig.originalFile} not found converted in Processed data");
                 }
 
             }
 
             return match;
         }
-
-        public override bool Equals(Object Stig)
-        {
-            bool overallMatch = false;
-            bool match = false;
-            Stig RealStig = (Stig)Stig;
-            if (this.Company.ToLower().Equals(RealStig.Company) && this.Product.ToLower().Equals(RealStig.Product) && this.StigVersion.ToLower().Equals(RealStig.StigVersion)) 
-            { 
-               // foreach(VRule stigRule in RealStig.V_Rules)
-               // {
-                   // foreach(string currentStigRule in this.V_Rules)
-                   // {
-                   //     if(currentStigRule.Equals(stigRule))
-                   //     {
-                   //         match = true;
-                   //         break;
-                   //     }
-                   // }
-              //      if(!match)
-              //      {
-              //          Console.WriteLine($"Rule: {stigRule} not found in {this.FilePath}");
-              //          overallMatch = false;
-              //      }
-              //  }
-                
-            }
-
-            return overallMatch;
-        }
-
-
     }
 }

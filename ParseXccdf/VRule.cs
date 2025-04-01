@@ -43,7 +43,11 @@ namespace ParseXccdf
         public string RuleId
         {
             get { return ruleId; }
-            set { ruleId = value; }
+            set 
+            {
+                ruleId = value;
+                this.trimmedRuleId = TrimPostProcessRuleId(value);
+            }
         }
 
         public string Severity
@@ -100,6 +104,12 @@ namespace ParseXccdf
         {
             get { return trimmedRuleId; }
             set { trimmedRuleId = value; }
+        }
+
+        public static string TrimPostProcessRuleId(string RuleId)
+        {
+            return RuleId.Split('.')[0];
+
         }
 
     }

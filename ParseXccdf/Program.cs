@@ -31,14 +31,14 @@ namespace ParseXccdf
                 ppvr.RuleTitle = node.Attributes["title"].InnerText;
                 ppvr.DscResource = node.Attributes["dscresource"].InnerText;
                 ppvr.FilePath = FilePath;
-                if (ppvr.RuleId.Contains('.'))
-                {
-                    ppvr.TrimmedRuleId = ppvr.RuleId.Split('.')[0];
-                }
-                else
-                {
-                    ppvr.TrimmedRuleId = ppvr.RuleId;
-                }
+              //  if (ppvr.RuleId.Contains('.'))
+              //  {
+              //      ppvr.TrimmedRuleId = ppvr.RuleId.Split('.')[0];
+              //  }
+              //  else
+              //  {
+              //      ppvr.TrimmedRuleId = ppvr.RuleId;
+              //  }
 
                     foreach (XmlNode child in node.ChildNodes)
                     {
@@ -204,11 +204,32 @@ namespace ParseXccdf
 
             List<PostProcessedVRule> newRuleList = PopulatePostProcessedRules(FilePath);
 
-
+            string[] splits = FilePath.Split('-');
             Stig stig = new Stig();
+            stig.IsPostProcessed = true;
+            string[] pathSplits = splits[0].Split('\\');
+            string prefix = pathSplits[pathSplits.Length - 1];
+            if (prefix.ToLower() == "office" || prefix.ToLower() == "office")
+            {
+                string officeYearPattern = @"\d{4}";
+                Regex regex = new Regex(officeYearPattern);
+
+                stig.IsOfficeProduct = true;
+                if (regex.IsMatch(splits[1]))
+                {
+                    stig.OfficeProduct = Regex.Replace(splits[1], @"[^a-zA-Z]", "");
+                }
+                else
+                {
+                    stig.OfficeProduct = splits[1];
+                }
+                regex = new Regex(officeYearPattern, RegexOptions.IgnoreCase);
+                Match match = regex.Match(splits[1]);
+                stig.OfficeYear = match.Value;
+            }
             stig.FilePath = FilePath;
             stig.PostProcessRules = newRuleList;
-            stig.Product = GetPostProcessedProduct(FilePath);
+            stig.Product = GetPostProcessedProduct(FilePath, ref stig);
             stig.Company = GetPostProcessedCompany(FilePath);
             stig.StigVersion = GetStigVersion(FilePath);
             stig.Purpose = GetPostProcessedPurpose(FilePath);
@@ -216,25 +237,10 @@ namespace ParseXccdf
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(FilePath);
 
-            XmlNode benchmarkNode = xmlDoc.SelectSingleNode("*");
-
-            foreach (XmlNode node in benchmarkNode.ChildNodes)
-            {
-                if (node.Name.ToLower() == "title")
-                {
-                    stig.Title = node.InnerText;
-                }
-                else if (node.Name.ToLower() == "description")
-                {
-                    stig.Description = node.InnerText;
-                }
-            }
-            // Get the attribute value
-            //if (specificNode != null && specificNode.Attributes["attributeName"] != null)
-            //{
-            //    string attributeValue = specificNode.Attributes["attributeName"].Value;
-            //    Console.WriteLine($"Attribute Value: {attributeValue}");
-            //}
+            XmlNode disaNode = xmlDoc.SelectSingleNode("*");
+            stig.Title = disaNode.Attributes["title"].Value;
+            stig.Description = disaNode.Attributes["description"].Value;
+            stig.OriginalFile = disaNode.Attributes["filename"].Value;
 
             return stig;
         }
@@ -242,6 +248,7 @@ namespace ParseXccdf
         {
             Stig stig = new Stig();
             stig.FilePath = FilePath;
+            stig.OriginalFile = FilePath;
             stig.Rules = PopulatePreProcessedRules(FilePath);
             stig.Product = GetPreProcessedProduct(FilePath, ref stig);
             // could move this to the GetPreProcessedProduct function
@@ -255,10 +262,50 @@ namespace ParseXccdf
             }
             stig.StigVersion = GetStigVersion(FilePath);
             stig.Purpose = GetPreProcessedPurpose(FilePath);
+            stig.Notice = GetPreProcessNotice(FilePath);
+            stig.Source = GetPreProcessedSource(FilePath);
             string[] titleAndDescription = GetPreStigTitleAndDescription(FilePath);
             stig.Title = titleAndDescription[0];
             stig.Description = titleAndDescription[1];
             return stig;
+        }
+        static string GetPreProcessedSource(string FilePath)
+        {
+            string source = "";
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load(FilePath);
+            foreach (XmlNode node in xmlDoc.ChildNodes)
+            {
+                if (node.Name.ToLower() == "benchmark")
+                {
+                    foreach (XmlNode childNode in node.ChildNodes)
+                    {
+                        if (childNode.Name.ToLower() == "reference")
+                        {
+                            foreach(XmlNode refNode in childNode.ChildNodes)
+                            {
+                                if(refNode.Name.ToLower().Contains("source"))
+                                {
+                                    source = refNode.ChildNodes[0].InnerText;
+                                    break;
+                                }
+                                //source = refNode.Attributes["id"].InnerText;
+                                
+                            }
+                            
+                        }
+                        if(source.Length > 0)
+                        {
+                            break;
+                        }
+                    }
+                }
+                if(source.Length > 0)
+                {
+                    break;
+                }
+            }
+            return source;
         }
         static string GetStigVersion(string StigFilePath)
         {
@@ -318,66 +365,51 @@ namespace ParseXccdf
             }
             return company;
         }
-        static string GetPreProcessedProduct(string data, ref Stig CurrentStig)
+        static string GetPreProcessNotice(string FilePath)
         {
-            string product = "";
-            try
+            string notice = "";
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load(FilePath);
+            foreach(XmlNode node in xmlDoc.ChildNodes)
             {
-                string[] splits = data.Split('_');
-
-                // is it an office product
-                string officeProduct = Stig.GetOfficeProduct(data);
-                if(officeProduct != "")
+                if(node.Name.ToLower() == "benchmark")
                 {
-                    // get office year
-                    product = officeProduct;
-                    CurrentStig.IsOfficeProduct = true;
-                    CurrentStig.OfficeYear = Stig.GetOfficeYear(data);
-                    CurrentStig.Company = "Microsoft";
-                }
-                else
-                {
-                    CurrentStig.IsOfficeProduct= false;
-                    string pattern = @"V\dR\d";
-                    Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
-                    int start = 1;
-                    int end = 0;
-
-                    foreach (string str in splits)
+                    foreach(XmlNode childNode in  node.ChildNodes)
                     {
-                        if (regex.IsMatch(str))
+                        if(childNode.Name.ToLower() == "notice")
                         {
-                            break;
+                            notice = childNode.Attributes["id"].InnerText;
                         }
-                        end++;
-                    }
-
-                    for (int i = start; i < end; i++)
-                    {
-                        product += splits[i];
-                        product += "_";
                     }
                 }
-
-
-                product = product.Replace("_STIG", "");
-
+                
             }
-            catch (Exception ex)
-            {
-                product = ex.Message;
-            }
-
-            return product.TrimEnd('_');
+            return notice;
         }
         static string GetPostProcessedPurpose(string data)
         {
             string purpose = "";
             try
             {
-                string[] splits = data.Split('_');
-                purpose = splits[1];
-                if (purpose == "MS") { purpose = "Microsoft"; }
+                string[] splitString = data.Split('\\');
+                string fileName = splitString[splitString.Length - 1];
+                if (fileName.ToLower().Contains("microsoft") || fileName.ToLower().Contains("windows") || fileName.ToLower().Contains("ms"))
+                {
+                    string[] fileNameSplit = fileName.Split('-');
+                    for (int i = 1; i < fileNameSplit.Length; i++)
+                    {
+                        if (fileNameSplit[i].ToLower() == "ms")
+                        {
+                            purpose = "MS";
+                            break;
+                        }
+                        else if (fileNameSplit[i].ToLower() == "dc")
+                        {
+                            purpose = "DC";
+                            break;
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -394,14 +426,19 @@ namespace ParseXccdf
                 string fileName = splitString[splitString.Length - 1];
                 if(fileName.ToLower().Contains("microsoft") || fileName.ToLower().Contains("windows") || fileName.ToLower().Contains("ms"))
                 {
-                    string temp = fileName;
+                    string[] splits = fileName.Split('_');
+                    for (int i = 2; i < splits.Length; i++)
+                    {
+                        if (splits[i].ToLower() == "ms")
+                        {
+                            purpose = "MS";
+                        }
+                        else if(splits[i].ToLower() == "dc")
+                        {
+                            purpose = "DC";
+                        }
+                    }
                 }
-
-
-
-                string[] splits = fileName.Split('_');
-                purpose = splits[1];
-                if (purpose == "MS") { purpose = "Microsoft"; }
             }
             catch (Exception ex)
             {
@@ -437,10 +474,63 @@ namespace ParseXccdf
             {
                 company = ex.Message;
             }
+            if (company.ToLower() == "ms" || company.ToLower() == "dc" || company.ToLower() == "iis" || company.ToLower() == "ie") { company = "Microsoft"; }
             return company;
 
         }
-        static string GetPostProcessedProduct(string data)
+        static string GetPreProcessedProduct(string data, ref Stig CurrentStig)
+        {
+            string product = "";
+            try
+            {
+                string[] splits = data.Split('_');
+
+                // is it an office product
+                string officeProduct = Stig.GetPreOfficeProduct(data);
+                if (officeProduct != "")
+                {
+                    // get office year
+                    product = officeProduct;
+                    CurrentStig.IsOfficeProduct = true;
+                    CurrentStig.OfficeYear = Stig.GetOfficeYear(data);
+                    CurrentStig.Company = "Microsoft";
+                }
+                else
+                {
+                    CurrentStig.IsOfficeProduct = false;
+                    string pattern = @"V\dR\d";
+                    Regex regex = new Regex(pattern, RegexOptions.IgnoreCase);
+                    int start = 1;
+                    int end = 0;
+
+                    foreach (string str in splits)
+                    {
+                        if (regex.IsMatch(str))
+                        {
+                            break;
+                        }
+                        end++;
+                    }
+
+                    for (int i = start; i < end; i++)
+                    {
+                        product += splits[i];
+                        product += "_";
+                    }
+                }
+
+
+                product = product.Replace("_STIG", "");
+
+            }
+            catch (Exception ex)
+            {
+                product = ex.Message;
+            }
+
+            return product.TrimEnd('_');
+        }
+        static string GetPostProcessedProduct(string data, ref Stig CurrentStig)
         {
             // read in xml
             // get value in attribute filename="Adobe_Acrobat_Reader_DC_Continuous_Track_STIG"
@@ -449,6 +539,19 @@ namespace ParseXccdf
             string product = "";
             try
             {
+               // string[] splits = 
+
+
+
+
+                //string officeProduct = Stig.GetPostOfficeProduct(data);
+                //if (officeProduct != "")
+                //{
+                 //   product = officeProduct;
+                    CurrentStig.IsOfficeProduct = true;
+                    CurrentStig.OfficeYear = Stig.GetOfficeYear(data);
+                    CurrentStig.Company = "Microsoft";
+               // }
                 string xmlContent = File.ReadAllText(data);
                 XmlDocument xmlDoc = new XmlDocument();
                 xmlDoc.LoadXml(xmlContent);
@@ -529,7 +632,7 @@ namespace ParseXccdf
                 foreach (string file in filteredFiles)
                 {
                     Stig stig = GetPostProcessedStig(file);
-                    stig.Product = GetPostProcessedProduct(file);
+                    stig.Product = GetPostProcessedProduct(file, ref stig);
                     stig.Company = GetPostProcessedCompany(file);
                     stig.IsPostProcessed = true;
                     fullRules.Add(stig);
