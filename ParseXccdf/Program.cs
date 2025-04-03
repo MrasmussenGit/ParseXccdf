@@ -140,6 +140,8 @@ namespace ParseXccdf
                                     if (checkChildNode.Name.ToLower() == "check-content")
                                     {
                                         vRule.CheckContent = checkChildNode.InnerText;
+                                        // determine rule type
+                                        VRule.DetermineRuleType(vRule.CheckContent);
                                     }
                                     else if (checkChildNode.Name.ToLower() == "check-content-ref")
                                     {

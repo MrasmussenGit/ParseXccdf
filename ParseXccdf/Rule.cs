@@ -40,38 +40,5 @@ namespace ParseXccdf
             set {  rules = value; }
         }
 
-        /*
-        public bool CompareRules(Rule rule1, Rule rule2)
-        {
-            bool match = false;
-            
-            foreach (VRule vRulea in rule1.Rules)
-            {
-                foreach(VRule vRuleb in rule2.Rules)
-                {
-                    if(vRuleb.GroupId.Equals(vRulea.GroupId))
-                    {
-                        match = true; break;
-                    }
-                }
-                if (!match)
-                {
-                    Console.WriteLine($"{vRulea.GroupId} did not have a rule that matched in {vRuleb.}");
-                }
-            }
-
-            foreach(VRule vRulea in rule2.Rules)
-            {
-                foreach(VRule VRuleb in rule1.Rules)
-                {
-
-                }
-            }
-               
-
-            return Match;
-        }
-        */
-
     }
 }
