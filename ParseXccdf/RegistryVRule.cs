@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ParseXccdf
 {
-    internal class RegistryVRule : PostProcessedVRule
+    internal class RegistryVRule : VRule
     {
         private string valueData;
         private string valueName;
@@ -49,6 +49,29 @@ namespace ParseXccdf
         {
             get { return isNullOrEmpty; }
             set { isNullOrEmpty = value; }
+        }
+
+        public static RegistryVRule Clone(VRule Rule)
+        {
+            RegistryVRule newVRule = new RegistryVRule();
+            newVRule.GroupId = Rule.GroupId;
+            foreach(string id in Rule.Identifiers)
+            {
+                newVRule.Identifiers.Add(id);
+            }
+            newVRule.RuleId = Rule.RuleId;
+            newVRule.Severity = Rule.Severity;
+            newVRule.Version = Rule.Version;
+            newVRule.RuleTitle = Rule.RuleTitle;
+            newVRule.RuleDescription = Rule.RuleDescription;
+            newVRule.FixText = Rule.FixText;
+            newVRule.FixId = Rule.FixId;
+            newVRule.CheckSystem = Rule.CheckSystem;
+            newVRule.CheckContentRefHref = Rule.CheckContentRefHref;
+            newVRule.CheckContent = Rule.CheckContent;
+            newVRule.TrimmedRuleId = Rule.TrimmedRuleId;
+            newVRule.RuleType = Rule.RuleType;
+            return newVRule;
         }
     }
 }

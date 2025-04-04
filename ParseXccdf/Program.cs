@@ -141,7 +141,10 @@ namespace ParseXccdf
                                     {
                                         vRule.CheckContent = checkChildNode.InnerText;
                                         // determine rule type
-                                        VRule.DetermineRuleType(vRule.CheckContent);
+                                        // based on type, properties populated will be different
+                                        List<VRule> test = new List<VRule>();
+                                        VRule newvRule =  VRule.GetSpecificRule(vRule);
+                                        // maybe VRule static method to populate data based on rule type
                                     }
                                     else if (checkChildNode.Name.ToLower() == "check-content-ref")
                                     {

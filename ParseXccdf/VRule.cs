@@ -1,6 +1,7 @@
 ﻿using System;
 using System.CodeDom;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -117,71 +118,103 @@ namespace ParseXccdf
 
         public static string TrimPostProcessRuleId(string RuleId)
         {
-            return RuleId.Split('.')[0];
+            string trimmedRuleId = "";
+            if(RuleId != null)
+            {
+                trimmedRuleId = RuleId.Split('.')[0];
+            }
+
+            return trimmedRuleId.Trim();
 
         }
-
-        public static string DetermineRuleType(string CheckContent)
+        public static VRule GetSpecificRule(VRule VRule)
         {
-            string ruleType = "";
+
+            VRule returnRule = new VRule();
             // original code has trim extra lines from content
 
 
 
-            if (IsRegistryRule(CheckContent))
+            if (IsRegistryRule(VRule.CheckContent))
             {
-                ruleType = "SomeSpecificRegTerm";
+                returnRule = ConvertToRegRule(VRule);
             }
-            else if (IsHardCodedRule(CheckContent))
-            {
-            }
-            else if (IsAccountPolicyRule(CheckContent))
+            else if (IsHardCodedRule(VRule.CheckContent))
             {
             }
-            else if (IsAuditPolicyRule(CheckContent))
+            else if (IsAccountPolicyRule(VRule.CheckContent))
             {
             }
-            else if (IsDnsServerSettingRule(CheckContent))
+            else if (IsAuditPolicyRule(VRule.CheckContent))
             {
             }
-            else if(IsDnsServerRootHintRule(CheckContent))
+            else if (IsDnsServerSettingRule(VRule.CheckContent))
             {
-
             }
-            else if (IsFileContentRule(CheckContent))
+            else if(IsDnsServerRootHintRule(VRule.CheckContent))
             {
 
             }
-            else if (IsGroupRule(CheckContent))
+            else if (IsFileContentRule(VRule.CheckContent))
             {
 
             }
-            else if (IsIISLoggingRule(CheckContent))
+            else if (IsGroupRule(VRule.CheckContent))
             {
 
             }
-            else if (IsGroupRule(CheckContent))
+            else if (IsIISLoggingRule(VRule.CheckContent))
             {
 
             }
-            else if(IsMimeTypeRule(CheckContent))
+            else if (IsGroupRule(VRule.CheckContent))
             {
 
             }
-            else if(IsPermissionRule(CheckContent))
+            else if(IsMimeTypeRule(VRule.CheckContent))
             {
 
             }
-            else if(IsProcessMitigationRule(CheckContent))
+            else if(IsPermissionRule(VRule.CheckContent))
             {
 
             }
+            else if(IsProcessMitigationRule(VRule.CheckContent))
+            {
+
+            }
+            else if(IsSecurityOptionsRule(VRule.CheckContent))
+            {
+
+            }
+            else
+            {
+                // manual rule
+            }
 
 
-
-                return ruleType;
+                return returnRule;
+                //return ruleType;
         }
 
+        #region ConvertToTypes
+        private static RegistryVRule ConvertToRegRule(VRule Rule)
+        {
+            RegistryVRule regVRule = RegistryVRule.Clone(Rule);
+            regVRule.Key = GetRegKeyFromContent(regVRule.CheckContent);
+            regVRule.ValueName = GetRegValueName(regVRule.CheckContent);
+            regVRule.ValueType = GetRegValueDataType(regVRule.CheckContent);
+            //regVRule.ValueData = GetRegValueData(regVRule.CheckContent);
+       // $this.SetValueType($rawString)
+       // $this.SetDuplicateRule()
+       // $this.SetDscResource($fixText)
+
+
+            return regVRule;
+        }
+        #endregion
+
+        #region IsRuleTypes
         private static bool IsHardCodedRule(string CheckContent)
         {
             return Regex.IsMatch(CheckContent, "HardCodedRule");
@@ -216,7 +249,11 @@ namespace ParseXccdf
         private static bool IsDnsServerRootHintRule(string CheckContent)
         {
             bool isMatch = false;
-
+            if(Regex.IsMatch(CheckContent, "dnsmgmt\\.msc") &&
+                Regex.IsMatch(CheckContent, "Verify the \"root hints\""))
+            {
+                isMatch = true;
+            }
             return isMatch;
         }
         private static bool IsFileContentRule(string CheckContent)
@@ -285,7 +322,67 @@ namespace ParseXccdf
             }
             return isReg;
         }
-        
+        private static bool IsSecurityOptionsRule(string CheckContent)
+        {
+            bool isMatch = false;
+
+            if(Regex.IsMatch(CheckContent, "Logging") &&
+                !Regex.IsMatch(CheckContent, "IIS 8\\.5|IIS 10\\.0") &&
+                !Regex.IsMatch(CheckContent, "verify only authorized groups") &&
+                !Regex.IsMatch(CheckContent, "Confirm|Consult with the System Administrator") &&
+                !Regex.IsMatch(CheckContent, "If an account associated with roles other than auditors") &&
+                !Regex.IsMatch(CheckContent, "review source IP"))
+            {
+                isMatch = true;
+            }
+            return isMatch;
+        }
+        #endregion
+
+        #region Helper Functions
+        private static string GetRegValueDataType(string CheckContent)
+        {
+            return "";
+        }
+        private static string GetRegValueData(string CheckContent)
+        {
+            return "";
+        }
+        private static string GetRegValueName(string CheckContent)
+        {
+            string valueName = "";
+            string trimmedValueName = "";
+            string pattern = @"Value\sName:.*";
+            Match match = Regex.Match(CheckContent, pattern);
+            if (match.Success)
+            {
+                valueName = match.Value.Split(':')[1];
+                valueName = valueName.Trim('\r', '\n', ' ');
+            }
+
+            return valueName;
+        }
+        private static string GetMcAfeeRegistryPath(string CheckContent)
+        {
+            return "";
+        }
+        private static string GetRegKeyFromContent(string CheckContent)
+        {
+            string regKey = "";
+            if (Regex.IsMatch(CheckContent, @"HKEY_LOCAL_MACHINE\\Software\\McAfee\\\s\(32-bit\)|HKLM\\Software\\Wow6432Node\\McAfee\\\s\(64-bit\)"))
+            {
+                regKey = GetMcAfeeRegistryPath(CheckContent);
+            }
+            else
+            {
+                string pattern = @"(HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER|HKEY_CLASSES_ROOT|HKEY_USERS|HKEY_PERFORMANCE_DATA|HKEY_CURRENT_CONFIG).*";
+                Match match = Regex.Match(CheckContent, pattern);
+                regKey = match.Value;
+            }
+                return regKey.Trim('\r','\n');
+        }
+
+        #endregion
 
     }
 }
