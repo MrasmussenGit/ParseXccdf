@@ -19,12 +19,16 @@ namespace ParseXccdf
         private string ruleTitle;
         private string ruleDescription;
         private string fixText;
+        private string trimmedFixText;
         private string fixId;
         private string checkSystem;
         private string checkContentRefHref;
         private string checkContent;
         private string trimmedRuleId;
         private string ruleType;
+        private string dscResource;
+        private List<string> isAFinding;
+        private List<string> isNotAFinding;
 
         #region Properties
         public VRule()
@@ -79,7 +83,16 @@ namespace ParseXccdf
         public string FixText
         {
             get { return fixText; }
-            set { fixText = value; }
+            set 
+            { 
+                fixText = value;
+                TrimmedFixText = TrimFixText(value);
+            }
+        }
+        public string TrimmedFixText
+        {
+            get { return trimmedFixText; }
+            set { trimmedFixText = value; }
         }
         public string FixId
         {
@@ -114,8 +127,30 @@ namespace ParseXccdf
             get { return ruleType; }
             set { ruleType = value; }
         }
+        public string DscResource
+        {
+            get { return dscResource; }
+            set { dscResource = value; }
+        }
+        public List<string>IsAFinding
+        {
+            get { return isAFinding; }
+            set { isAFinding = value; }
+        }
+        public List<string> IsNotAFinding
+        {
+            get { return isNotAFinding; }
+            set { isNotAFinding = value; }
+        }
         #endregion 
+        public static string TrimFixText(string FixText)
+        {
+            string trimmedText = "";
+            // remove all after value: x
 
+
+            return trimmedText;
+        }
         public static string TrimPostProcessRuleId(string RuleId)
         {
             string trimmedRuleId = "";
@@ -201,9 +236,35 @@ namespace ParseXccdf
         private static RegistryVRule ConvertToRegRule(VRule Rule)
         {
             RegistryVRule regVRule = RegistryVRule.Clone(Rule);
+            regVRule.IsAFinding = RegistryVRule.GetIsAFindingString(Rule.CheckContent);
+            regVRule.IsNotAFinding = RegistryVRule.GetIsNotAFindingString(Rule.CheckContent);
             regVRule.Key = GetRegKeyFromContent(regVRule.CheckContent);
             regVRule.ValueName = GetRegValueName(regVRule.CheckContent);
             regVRule.ValueType = GetRegValueDataType(regVRule.CheckContent);
+            regVRule.ValueData = GetRegValueData(regVRule.CheckContent);
+
+            // items reg data is checked and adjusted for
+            //  isBlank
+            //  isEnabledOrDisabled
+            //  isHexCode
+            //  isInteger
+            //  this.ValueType = 'MultiString'
+            //
+            //  if ($regData match "see below") -> GetMultiValueRegistryStringData($this.RawString)
+            //  else -> FormatMultiStringRegistryData($registryValueData)
+
+
+
+            // needs works
+            //regVRule.FixText = RegistryVRule.TrimRegFixText(Rule.FixText);
+            regVRule.FixText = Rule.FixText;
+            regVRule.trimmedFixText = RegistryVRule.TrimRegistryFixText(Rule.FixText);
+
+
+            regVRule.DscResource = GetDscResourceValue(regVRule.FixText, regVRule.Key, regVRule.ValueName);
+
+
+
             //regVRule.ValueData = GetRegValueData(regVRule.CheckContent);
        // $this.SetValueType($rawString)
        // $this.SetDuplicateRule()
@@ -340,13 +401,109 @@ namespace ParseXccdf
         #endregion
 
         #region Helper Functions
+        private static string GetDscResourceValue(string FixText, string RegistryKey, string RegistryValueName)
+        {
+            string dscResource = "";
+            string pattern1 = @"Administrative Template";
+            string pattern2 = @"(^hkcu|^HKEY_CURRENT_USER)";
+            string pattern3 = @"RemoteAccessHostFirewallTraversal";
+
+            if(Regex.IsMatch(FixText, pattern1) || Regex.IsMatch(RegistryKey, pattern2) || Regex.IsMatch(RegistryValueName, pattern3))
+            {
+                dscResource = "RegistryPolicyFile";
+            }
+            else
+            {
+                dscResource = "Registry";
+            }
+
+            return dscResource;
+        }
         private static string GetRegValueDataType(string CheckContent)
         {
-            return "";
+            string valueDataType = "";
+            string pattern = @"Type.*:\s.*REG_(SZ|BINARY|DWORD|QWORD|MULTI_SZ|EXPAND_SZ)";
+
+            Regex.IsMatch(CheckContent, @"Type.*:\s.*REG_(SZ|BINARY|DWORD|QWORD|MULTI_SZ|EXPAND_SZ)");
+            Regex regex = new Regex(pattern);
+            Match match = regex.Match(CheckContent);
+            if (match.Success)
+            {
+                valueDataType = match.Value;
+            }
+
+            return valueDataType;
         }
         private static string GetRegValueData(string CheckContent)
         {
-            return "";
+            string valueData = "";
+            string pattern = @"Value:\s.*";
+            Match match = Regex.Match(CheckContent, pattern);
+            if (match.Success)
+            {
+                valueData = match.Value.Split(':')[1];
+                valueData = valueData.Trim('\r', '\n', ' ');
+            }
+
+            /* - original code has these checks after getting the reg value data ***************************************************************
+             * 
+                 # If a range is found on the value line, it needs further processing.
+        if (($this.TestValueDataStringForRange($registryValueData)) -or ($this.RawString -match "LegalNoticeText"))
+        {
+            # Set the OrganizationValueRequired flag to true so that a org level setting will be required.
+            $this.SetOrganizationValueRequired()
+
+            # Try to extract a test string from the range text.
+            $OrganizationValueTestString = $this.GetOrganizationValueTestString($registryValueData)
+
+            if ($this.RawString -match "LegalNoticeText")
+            {
+                $LegalNoticeTextOrganizationValueTestString = '{0} is set to the required legal notice before logon'
+                $this.set_OrganizationValueTestString($LegalNoticeTextOrganizationValueTestString)
+            }
+
+            # If a test string was returned, add it.
+            if ($null -ne $OrganizationValueTestString)
+            {
+                $this.set_OrganizationValueTestString($OrganizationValueTestString)
+            }
+        }
+        else
+        {
+            if ($this.IsDataBlank($registryValueData))
+            {
+                $this.SetIsNullOrEmpty()
+                $registryValueData = ''
+            }
+            elseif ($this.IsDataEnabledOrDisabled($registryValueData))
+            {
+                $registryValueData = $this.GetValidEnabledOrDisabled(
+                    $this.ValueType, $registryValueData
+                )
+            }
+            elseif ($this.IsDataHexCode($registryValueData))
+            {
+                $registryValueData = $this.GetIntegerFromHex($registryValueData)
+            }
+            elseif ($this.IsDataInteger($registryValueData))
+            {
+                $registryValueData = $this.GetNumberFromString($registryValueData)
+            }
+            elseif ($this.ValueType -eq 'MultiString')
+            {
+                if ($registryValueData -match "see below")
+                {
+                    $registryValueData = $this.GetMultiValueRegistryStringData($this.RawString)
+                }
+                else
+                {
+                    $registryValueData = $this.FormatMultiStringRegistryData($registryValueData)
+                }
+            }
+            $this.Set_ValueData($registryValueData)
+             * */
+
+            return valueData;
         }
         private static string GetRegValueName(string CheckContent)
         {

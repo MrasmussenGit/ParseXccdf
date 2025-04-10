@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace ParseXccdf
@@ -374,6 +375,106 @@ namespace ParseXccdf
             }
 
             return match;
+        }
+        public static void OutputStigToDisk(string Path, Stig OutputStig)
+        {
+            XmlDocument doc = new XmlDocument();
+            XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
+            doc.AppendChild(xmlDeclaration);
+            XmlElement root = doc.CreateElement("DISA");
+            root.SetAttribute("version", OutputStig.StigVersion);
+            root.SetAttribute("classification", OutputStig.Classification);
+            root.SetAttribute("customname", "");
+            root.SetAttribute("stigid", "");
+            root.SetAttribute("description", OutputStig.Description);
+            root.SetAttribute("filename", OutputStig.FileNameAndPath);
+            root.SetAttribute("releaseinfo", OutputStig.ReleaseInfo);
+            root.SetAttribute("title", OutputStig.Title);
+            root.SetAttribute("notice", OutputStig.Notice);
+            root.SetAttribute("source", OutputStig.Source);
+            root.SetAttribute("fullversion", OutputStig.FullVersion);
+            root.SetAttribute("created", DateTime.Now.ToShortDateString());
+            doc.AppendChild(root);
+
+            // add node here regRule, manualRule then append the below
+
+            foreach(Rule rule in OutputStig.Rules)
+            {
+                if (rule.Rules[0].DscResource == "None")
+                {
+                    XmlElement manRuleElement = doc.CreateElement("ManualRule");
+                    manRuleElement.SetAttribute("dscresourcemodule", "None");
+                    root.AppendChild(manRuleElement);
+                }
+                else if (rule.Rules[0].DscResource == "RegistryPolicyFile")
+                {
+                    XmlElement regRuleElement = doc.CreateElement("RegistryRule");
+                    regRuleElement.SetAttribute("dscresourcemodule", "PSDscResources");
+                    root.AppendChild(regRuleElement);
+
+                    XmlElement ruleElement = doc.CreateElement("Rule");
+                    ruleElement.SetAttribute("id", rule.Rules[0].GroupId);
+                    ruleElement.SetAttribute("severity", rule.Rules[0].Severity);
+                    ruleElement.SetAttribute("conversionstatus", "");
+                    ruleElement.SetAttribute("title", rule.Rules[0].RuleTitle);
+                    ruleElement.SetAttribute("dscresource", "RegistryPolicyFile");
+                    regRuleElement.AppendChild(ruleElement);
+
+                    XmlElement ruleChild = doc.CreateElement("Description");
+                    ruleChild.InnerText = rule.Description;
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("DuplicateOf");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("Ensure");
+                    ruleChild.InnerText = "Present";
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("IsNullOrEmpty");
+                    ruleChild.InnerText = "False";
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("Key");
+                    RegistryVRule registryVRule = RegistryVRule.Clone(rule.Rules[0]);
+                    ruleChild.InnerText = registryVRule.Key;
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("LegacyId");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("OrganizationValueRequired");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("OrganizationValueTestString");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("RawString");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("ValueData");
+                    RegistryVRule registryVRule1 = RegistryVRule.Clone(rule.Rules[0]);
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("ValueName");
+                    RegistryVRule registryVRule2 = RegistryVRule.Clone(rule.Rules[0]);
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("ValueType");
+                    RegistryVRule registryVRule3 = RegistryVRule.Clone(rule.Rules[0]);
+                    ruleElement.AppendChild(ruleChild);
+
+                }
+
+            }
+
+            doc.Save(Path);
+            // check for manualRules
+            // check for registryRules
+            // set attribute for reg rules -> dscresourcemodule="PSDscResources"
+
+
+
         }
     }
 }

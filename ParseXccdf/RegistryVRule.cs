@@ -51,6 +51,86 @@ namespace ParseXccdf
             set { isNullOrEmpty = value; }
         }
 
+        public static string TrimRegFixText(string FixText)
+        {
+            string pattern = "\r\nValue:";
+            int index = FixText.IndexOf(pattern);
+            string[] result = FixText.Split(new string[] { pattern }, StringSplitOptions.None);
+            return string.Join("", result);
+            
+        }
+        public static string TrimRegistryFixText(string FixText)
+        {
+            List<string> newFixText = new List<string>();
+            string[] splits = FixText.Split('\n');
+            for (int i =0; i < splits.Length - 1; i++)
+            {
+                if (splits[i] != "" && splits[i] != "\r")
+                {
+                    if (splits[i].Contains(':'))
+                    {
+                        if (splits[i].StartsWith("Value:"))
+                        {
+                            int colonIndex = splits[i].IndexOf(':');
+                            if (colonIndex > 0 && colonIndex + 1 < splits[i].Length)
+                            {
+                                string newLine = splits[i].Trim('\r');
+                                newFixText.Add(newLine);
+                            }
+                        }
+                        else
+                        {
+                            newFixText.Add(splits[i]);
+                        }
+
+                    }
+                    else
+                    {
+                        newFixText.Add(splits[i]);
+                    }
+                    if (splits[i].StartsWith("Value:")){ break; }
+                }
+                
+            }
+            return string.Join("",newFixText);
+
+        }
+        public static List<string> GetIsAFindingString(string CheckContent)
+        {
+            List<string> result = new List<string>();
+
+            if (CheckContent != null)
+            {
+                string[] splits = CheckContent.Split('\r', '\n');
+                foreach (string line in splits)
+                {
+                    if (line.ToLower().Contains("is a finding"))
+                    {
+                        result.Add(line);
+                    }
+                }
+            }
+
+            return result;
+        }
+        public static List<string> GetIsNotAFindingString(string CheckContent)
+        {
+            List<string> result = new List<string>();
+
+            if (CheckContent != null)
+            {
+                string[] splits = CheckContent.Split('\r', '\n');
+                foreach (string line in splits)
+                {
+                    if (line.ToLower().Contains("is not a finding"))
+                    {
+                        result.Add(line);
+                    }
+                }
+            }
+
+            return result;
+        }
         public static RegistryVRule Clone(VRule Rule)
         {
             RegistryVRule newVRule = new RegistryVRule();

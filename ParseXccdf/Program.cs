@@ -104,6 +104,7 @@ namespace ParseXccdf
                     else if (child.Name.ToLower() == "rule")
                     {
                         //vRule.RuleId = node.Attributes["id"].Value;
+                        var newRule = new VRule();
                         vRule.Severity = child.Attributes["severity"].Value;
                         vRule.GroupId = node.Attributes["id"].InnerText;
                         foreach (XmlNode ruleChildNode in child.ChildNodes)
@@ -142,8 +143,7 @@ namespace ParseXccdf
                                         vRule.CheckContent = checkChildNode.InnerText;
                                         // determine rule type
                                         // based on type, properties populated will be different
-                                        List<VRule> test = new List<VRule>();
-                                        VRule newvRule =  VRule.GetSpecificRule(vRule);
+                                        newRule =  VRule.GetSpecificRule(vRule);
                                         // maybe VRule static method to populate data based on rule type
                                     }
                                     else if (checkChildNode.Name.ToLower() == "check-content-ref")
@@ -158,7 +158,7 @@ namespace ParseXccdf
                                 string temp = ruleChildNode.InnerText;
                             }
                         }
-                        rule.Rules.Add(vRule);
+                        rule.Rules.Add(newRule);
                     }
                 }
                 rules.Add(rule);
@@ -656,6 +656,12 @@ namespace ParseXccdf
             Stig.CompareStigLists(PreProcessedList, PostProcessedList, ShowOnlyErrors);
 
         }
+        static Stig GetSingleStig(string PathToXCCDF)
+        {
+            Stig stig = GetPreProcessedStig(PathToXCCDF);
+            stig.IsPostProcessed = false;
+            return stig;
+        }
         static void Main(string[] args)
         {
 
@@ -663,6 +669,7 @@ namespace ParseXccdf
              Command line 
             --preprocessedFolderPath "C:\git\PowerStig\source\StigData\Archive" --PostProcessedFolderPath "C:\git\PowerStig\source\StigData\Processed"
             --listRulesFilePath "C:\git\PowerStig\source\StigData\Archive\Linux.RHEL\U_RHEL_9_STIG_V2R3_Manual-xccdf.xml"
+            --ConvertDisaStigFilePath "C:\git\PowerStig\source\StigData\Archive\Adobe\U_Adobe_Acrobat_Pro_DC_Continuous_V2R1_Manual-xccdf.xml" --OutputFilePath "c:\test"
              */
             var argDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             string preprocessedFolderPath = String.Empty;
@@ -685,6 +692,14 @@ namespace ParseXccdf
                 {
                     Console.WriteLine($"{rule}");
                 }
+            }
+            else if(argDictionary.TryGetValue("--ConvertDisaStigFilePath", out string stigToConvertArg))
+            {
+                Console.WriteLine($"Converting {stigToConvertArg}");
+                argDictionary.TryGetValue("--OutputFilePath", out string outputFilePath);
+                Stig stig = GetSingleStig(stigToConvertArg);
+                Stig.OutputStigToDisk(outputFilePath, stig);
+                Console.WriteLine($"Conversion completed");
             }
             else
             {
