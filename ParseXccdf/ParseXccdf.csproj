@@ -46,6 +46,7 @@
     <Compile Include="PostProcessedVRule.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RegistryData.cs" />
     <Compile Include="RegistryVRule.cs" />
     <Compile Include="Rule.cs" />
     <Compile Include="Stig.cs" />

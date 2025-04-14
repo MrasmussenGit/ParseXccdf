@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ParseXccdf
@@ -152,6 +153,23 @@ namespace ParseXccdf
             newVRule.TrimmedRuleId = Rule.TrimmedRuleId;
             newVRule.RuleType = Rule.RuleType;
             return newVRule;
+        }
+        public static bool IsMultilineRegEntry(string CheckContent)
+        {
+            bool isMultiline = false;
+            string pattern = @"HKEY_(LOCAL_MACHINE|CURRENT_USER|CLASSES_ROOT|USERS|CURRENT_CONFIG)\\[\w\\]+";
+            Regex regex = new Regex(pattern);
+            MatchCollection mc = regex.Matches(CheckContent);
+            
+            if (mc.Count > 1)
+            {
+                isMultiline = true;
+                foreach(Match m in mc)
+                {
+                    string temp = "";
+                }
+            }
+            return isMultiline; 
         }
     }
 }

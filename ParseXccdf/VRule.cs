@@ -238,10 +238,20 @@ namespace ParseXccdf
             RegistryVRule regVRule = RegistryVRule.Clone(Rule);
             regVRule.IsAFinding = RegistryVRule.GetIsAFindingString(Rule.CheckContent);
             regVRule.IsNotAFinding = RegistryVRule.GetIsNotAFindingString(Rule.CheckContent);
-            regVRule.Key = GetRegKeyFromContent(regVRule.CheckContent);
-            regVRule.ValueName = GetRegValueName(regVRule.CheckContent);
-            regVRule.ValueType = GetRegValueDataType(regVRule.CheckContent);
-            regVRule.ValueData = GetRegValueData(regVRule.CheckContent);
+
+            // test if value is multiline?
+            
+            if(RegistryVRule.IsMultilineRegEntry(Rule.CheckContent))
+            {
+                // create a reg value class and create a property that is a collection
+            }
+            else
+            {
+                regVRule.Key = GetRegKeyFromContent(regVRule.CheckContent);
+                regVRule.ValueName = GetRegValueName(regVRule.CheckContent);
+                regVRule.ValueType = GetRegValueDataType(regVRule.CheckContent);
+                regVRule.ValueData = GetRegValueData(regVRule.CheckContent);
+            }
 
             // items reg data is checked and adjusted for
             //  isBlank
