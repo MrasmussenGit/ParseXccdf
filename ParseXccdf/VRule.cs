@@ -3,6 +3,7 @@ using System.CodeDom;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Permissions;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -24,9 +25,11 @@ namespace ParseXccdf
         private string checkSystem;
         private string checkContentRefHref;
         private string checkContent;
+        private string originalCheckContent;
         private string trimmedRuleId;
         private string ruleType;
         private string dscResource;
+        private bool modifiedCheckContent;
         private List<string> isAFinding;
         private List<string> isNotAFinding;
 
@@ -110,13 +113,20 @@ namespace ParseXccdf
             get { return checkContentRefHref; }
             set { checkContentRefHref = value; }
         }
-
+        public string OriginalCheckContent
+        {
+            get { return originalCheckContent; }
+            set { originalCheckContent = value; }
+        }
         public string CheckContent
         {
             get { return checkContent; }
-            set { checkContent = value; }
+            set 
+            { 
+                checkContent = value; 
+                OriginalCheckContent = value;
+            }
         }
-
         public string TrimmedRuleId
         {
             get { return trimmedRuleId; }
@@ -141,6 +151,11 @@ namespace ParseXccdf
         {
             get { return isNotAFinding; }
             set { isNotAFinding = value; }
+        }
+        public bool ModifiedCheckContent
+        {
+            get { return modifiedCheckContent; }
+            set { modifiedCheckContent = value; }
         }
         #endregion 
         public static string TrimFixText(string FixText)
@@ -225,6 +240,7 @@ namespace ParseXccdf
             else
             {
                 // manual rule
+                // returnRule = VRule.Co
             }
 
 
@@ -233,6 +249,12 @@ namespace ParseXccdf
         }
 
         #region ConvertToTypes
+        private static ManualVRule ConvertToManualRule(VRule Rule)
+        {
+            ManualVRule man = new ManualVRule();
+
+            return man;
+        }
         private static RegistryVRule ConvertToRegRule(VRule Rule)
         {
             RegistryVRule regVRule = RegistryVRule.Clone(Rule);

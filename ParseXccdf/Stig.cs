@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -15,6 +16,7 @@ namespace ParseXccdf
     {
         private List<Rule> rules;
         private List<PostProcessedVRule> postProcessRules;
+        private List<string> changeLog;
         private string title;
         private string description;
         private string FileNameAndPath;
@@ -132,6 +134,11 @@ namespace ParseXccdf
             get { return isOfficeProduct; }
             set { isOfficeProduct = value; }
         }
+        public List<string> ChangeLog
+        {
+            set { changeLog = value; }
+            get { return changeLog; }
+        }
 
         public string OriginalFile
         {
@@ -139,7 +146,19 @@ namespace ParseXccdf
             get { return originalFile; }
         }
 
+        public static List<String> GetChangeLog(string FilePath)
+        {
+            
+            // filepath should end in .log
+            if(Regex.IsMatch(FilePath, @".*xml"))
+            {
+                FilePath = FilePath.Replace(".xml", ".log");
+            }
 
+            List<string> changeLog = new List<string>(File.ReadAllLines(FilePath));
+
+            return changeLog;
+        }
         public static bool PercentageOfStigRulesMatch(Stig PreStig, Stig PostStig, int Percentage)
         {
             bool match = false;
@@ -375,6 +394,29 @@ namespace ParseXccdf
             }
 
             return match;
+        }
+        public List<Rule> ProcessChangeLog()
+        {
+            List<Rule> rules = new List<Rule>();
+            List<string> ruleChanges = GetChangeLog(this.FileNameAndPath);
+            foreach(string change in ruleChanges)
+            {
+                // V-213126::*::HardCodedRule(RegistryRule)@{DscResource = 'RegistryPolicyFile'; Ensure = 'Present';
+                // Key = 'HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\Security\cDigSig\cEUTLDownload'; ValueData = '0'; ValueName = 'bLoadSettingsFromURL'; ValueType = 'Dword'}
+                // match change with rule in rules list, change the checkContent to be the content in the changelog
+                string[] splits = change.Split(new string[] { "::" }, StringSplitOptions.RemoveEmptyEntries);
+                foreach(Rule rule in this.Rules)
+                {
+                    if (rule.Rules[0].GroupId == splits[0])
+                    {
+                        // found a rule to replace check content
+                        //Regex.Replace(rule.Rules[0].CheckContent, ".*", splits[2]);
+                        rule.Rules[0].ModifiedCheckContent = true;
+                        rule.Rules[0].CheckContent = splits[2];
+                    }
+                }
+            }
+            return rules;
         }
         public static void OutputStigToDisk(string Path, Stig OutputStig)
         {

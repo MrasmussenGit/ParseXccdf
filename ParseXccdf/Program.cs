@@ -78,8 +78,8 @@ namespace ParseXccdf
         }
         static List<Rule> PopulatePreProcessedRules(string FilePath)
         {
-            // check if this is the xccdf file and not the post processed version.
-
+            // get log file to process manual changes
+            
             List<Rule> rules = new List<Rule>();
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(FilePath);
@@ -272,6 +272,11 @@ namespace ParseXccdf
             string[] titleAndDescription = GetPreStigTitleAndDescription(FilePath);
             stig.Title = titleAndDescription[0];
             stig.Description = titleAndDescription[1];
+
+            // process change log
+            stig.ProcessChangeLog();
+            // process exception list
+
             return stig;
         }
         static string GetPreProcessedSource(string FilePath)
