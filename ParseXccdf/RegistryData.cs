@@ -9,9 +9,20 @@ namespace ParseXccdf
     internal class RegistryData
     {
         private string registryKey;
-        private string registryValue;
+        private string registryValueName;
         private string registryType;
         private string registryName;
+        private string registryValueData;
+
+
+        public RegistryData()
+        {
+            this.registryKey = "";
+            this.registryValueName = "";
+            this.registryType = "";
+            this.registryName = "";
+            this.registryValueData = "";
+        }
 
         public string RegistryKey
         {
@@ -19,10 +30,10 @@ namespace ParseXccdf
             set { registryKey = value; }
         }
 
-        public string RegistryValue
+        public string RegistryValueName
         {
-            get { return registryValue; }
-            set { registryValue = value; }
+            get { return registryValueName; }
+            set { registryValueName = value; }
         }
 
         public string RegistryType
@@ -35,6 +46,11 @@ namespace ParseXccdf
         {
             get { return registryName; }
             set { registryName = value; }
+        }
+        public string RegistryValueData
+        {
+            get { return registryValueData; }
+            set { registryValueData = value; }
         }
     }
 }

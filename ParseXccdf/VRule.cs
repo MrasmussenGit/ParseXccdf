@@ -7,6 +7,8 @@ using System.Security.Permissions;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace ParseXccdf
 {
@@ -29,6 +31,7 @@ namespace ParseXccdf
         private string trimmedRuleId;
         private string ruleType;
         private string dscResource;
+        private string ensure;
         private bool modifiedCheckContent;
         private List<string> isAFinding;
         private List<string> isNotAFinding;
@@ -37,6 +40,8 @@ namespace ParseXccdf
         public VRule()
         {
             identifiers = new List<string>();
+            isAFinding = new List<string>();
+            isNotAFinding = new List<string>();
         }
         
         public string GroupId
@@ -121,11 +126,8 @@ namespace ParseXccdf
         public string CheckContent
         {
             get { return checkContent; }
-            set 
-            { 
-                checkContent = value; 
-                OriginalCheckContent = value;
-            }
+            set { checkContent = value; }
+
         }
         public string TrimmedRuleId
         {
@@ -157,6 +159,11 @@ namespace ParseXccdf
             get { return modifiedCheckContent; }
             set { modifiedCheckContent = value; }
         }
+        public string Ensure
+        {
+            get { return ensure; }
+            set { ensure = value; }
+        }
         #endregion 
         public static string TrimFixText(string FixText)
         {
@@ -166,20 +173,102 @@ namespace ParseXccdf
 
             return trimmedText;
         }
-        public static string TrimPostProcessRuleId(string RuleId)
+        public static string GetCheckContent(XmlNode Rule)
         {
-            string trimmedRuleId = "";
-            if(RuleId != null)
+            string checkContent = "";
+            foreach (XmlNode child in Rule.ChildNodes)
             {
-                trimmedRuleId = RuleId.Split('.')[0];
+                if (child.Name.ToLower() == "rule")
+                {
+                    foreach (XmlNode ruleChildNode in child.ChildNodes)
+                    {
+                        if (ruleChildNode.Name.ToLower() == "check")
+                        {
+                            foreach (XmlNode checkChildNode in ruleChildNode.ChildNodes)
+                            {
+                                if (checkChildNode.Name.ToLower() == "check-content")
+                                {
+                                    checkContent = checkChildNode.InnerText;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            return trimmedRuleId.Trim();
-
+            return checkContent;
         }
-        public static VRule GetSpecificRule(VRule VRule)
+        public static string GetRuleType(XmlNode RuleXml)
         {
+            List<VRule> rules = new List<VRule>();
+            string type = "";
+            // original code has trim extra lines from content
+            string checkContent = GetCheckContent(RuleXml);
 
+
+            if (IsRegistryRule(checkContent))
+            {
+                type = "RegistryRule";
+            }
+            else if (IsHardCodedRule(checkContent))
+            {
+                type = "HardCodedRule";
+            }
+            else if (IsAccountPolicyRule(checkContent))
+            {
+            }
+            else if (IsAuditPolicyRule(checkContent))
+            {
+            }
+            else if (IsDnsServerSettingRule(checkContent))
+            {
+            }
+            else if (IsDnsServerRootHintRule(checkContent))
+            {
+
+            }
+            else if (IsFileContentRule(checkContent))
+            {
+
+            }
+            else if (IsGroupRule(checkContent))
+            {
+
+            }
+            else if (IsIISLoggingRule(checkContent))
+            {
+
+            }
+            else if (IsGroupRule(checkContent))
+            {
+
+            }
+            else if (IsMimeTypeRule(checkContent))
+            {
+
+            }
+            else if (IsPermissionRule(checkContent))
+            {
+
+            }
+            else if (IsProcessMitigationRule(checkContent))
+            {
+
+            }
+            else if (IsSecurityOptionsRule(checkContent))
+            {
+
+            }
+            else
+            {
+                type = "ManualRule";
+            }
+            return type;
+            //return ruleType;
+        }
+        public static List<VRule> GetSpecificRule(VRule VRule)
+        {
+            List<VRule> rules = new List<VRule>();
             VRule returnRule = new VRule();
             // original code has trim extra lines from content
 
@@ -187,7 +276,11 @@ namespace ParseXccdf
 
             if (IsRegistryRule(VRule.CheckContent))
             {
-                returnRule = ConvertToRegRule(VRule);
+                List<RegistryVRule> rulesToAdd = ConvertToRegRule(VRule);
+                foreach(RegistryVRule r in rulesToAdd)
+                {
+                    rules.Add(r);
+                }
             }
             else if (IsHardCodedRule(VRule.CheckContent))
             {
@@ -240,40 +333,35 @@ namespace ParseXccdf
             else
             {
                 // manual rule
-                // returnRule = VRule.Co
+                //rules = ManualVRule.Clone(VRule);
             }
-
-
-                return returnRule;
-                //return ruleType;
+                return rules;
+            //return ruleType;
         }
 
         #region ConvertToTypes
-        private static ManualVRule ConvertToManualRule(VRule Rule)
-        {
-            ManualVRule man = new ManualVRule();
-
-            return man;
-        }
-        private static RegistryVRule ConvertToRegRule(VRule Rule)
+        private static List<RegistryVRule> ConvertToRegRule(VRule Rule)
         {
             RegistryVRule regVRule = RegistryVRule.Clone(Rule);
-            regVRule.IsAFinding = RegistryVRule.GetIsAFindingString(Rule.CheckContent);
-            regVRule.IsNotAFinding = RegistryVRule.GetIsNotAFindingString(Rule.CheckContent);
+            regVRule.IsAFinding = VRule.GetIsAFindingString(Rule.CheckContent);
+            regVRule.IsNotAFinding = VRule.GetIsNotAFindingString(Rule.CheckContent);
 
             // test if value is multiline?
             
-            if(RegistryVRule.IsMultilineRegEntry(Rule.CheckContent))
-            {
-                // create a reg value class and create a property that is a collection
-            }
-            else
-            {
-                regVRule.Key = GetRegKeyFromContent(regVRule.CheckContent);
-                regVRule.ValueName = GetRegValueName(regVRule.CheckContent);
-                regVRule.ValueType = GetRegValueDataType(regVRule.CheckContent);
-                regVRule.ValueData = GetRegValueData(regVRule.CheckContent);
-            }
+        //    if(regVRule.IsMultilineRegEntry(Rule.CheckContent))
+        //    {
+                string temp = "";
+                // check content contains multiple reg keys and values?  populate data list in regVRule
+                // create multiple rules, one for each reg entry
+
+       //     }
+       //     else
+       //     {
+                regVRule.Data.RegistryKey = RegistryVRule.GetRegKeyFromContent(regVRule.CheckContent);
+                regVRule.Data.RegistryValueName = RegistryVRule.GetRegValueName(regVRule.CheckContent);
+                regVRule.Data.RegistryType = RegistryVRule.GetRegValueDataType(regVRule.CheckContent);
+                regVRule.Data.RegistryValueData = RegistryVRule.GetRegValueData(regVRule.CheckContent);
+      //      }
 
             // items reg data is checked and adjusted for
             //  isBlank
@@ -293,7 +381,7 @@ namespace ParseXccdf
             regVRule.trimmedFixText = RegistryVRule.TrimRegistryFixText(Rule.FixText);
 
 
-            regVRule.DscResource = GetDscResourceValue(regVRule.FixText, regVRule.Key, regVRule.ValueName);
+            regVRule.DscResource = GetDscResourceValue(regVRule.FixText, regVRule.Data.RegistryKey, regVRule.Data.RegistryValueName);
 
 
 
@@ -302,8 +390,10 @@ namespace ParseXccdf
        // $this.SetDuplicateRule()
        // $this.SetDscResource($fixText)
 
+            List<RegistryVRule> rules = new List<RegistryVRule>();
+            rules.Add(regVRule);
 
-            return regVRule;
+            return rules;
         }
         #endregion
 
@@ -570,7 +660,54 @@ namespace ParseXccdf
             }
                 return regKey.Trim('\r','\n');
         }
+        public static string TrimPostProcessRuleId(string RuleId)
+        {
+            string trimmedRuleId = "";
+            if (RuleId != null)
+            {
+                trimmedRuleId = RuleId.Split('.')[0];
+            }
 
+            return trimmedRuleId.Trim();
+
+        }
+        public static List<string> GetIsAFindingString(string CheckContent)
+        {
+            List<string> result = new List<string>();
+
+            if (CheckContent != null)
+            {
+                string[] splits = CheckContent.Split('\r', '\n');
+                foreach (string line in splits)
+                {
+                    if (line.ToLower().Contains("is a finding"))
+                    {
+                        result.Add(line);
+                    }
+                }
+            }
+
+            return result;
+        }
+        public static List<string> GetIsNotAFindingString(string CheckContent)
+        {
+            List<string> result = new List<string>();
+
+            if (CheckContent != null)
+            {
+                string[] splits = CheckContent.Split('\r', '\n');
+                foreach (string line in splits)
+                {
+                    if (line.ToLower().Contains("is not a finding"))
+                    {
+                        result.Add(line);
+                    }
+                }
+            }
+
+            return result;
+        }
+        
         #endregion
 
     }

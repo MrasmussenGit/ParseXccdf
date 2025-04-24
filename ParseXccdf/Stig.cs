@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Xml;
 using System.Xml.Linq;
+using System.Runtime.CompilerServices;
 
 namespace ParseXccdf
 {
@@ -36,7 +37,12 @@ namespace ParseXccdf
         private string fullVersion;
 
 
-        public Stig() { }
+        public Stig() 
+        {
+            this.rules = new List<Rule>();
+            this.postProcessRules = new List<PostProcessedVRule>();
+            this.changeLog = new List<string>();
+        }
 
         public string Classification
         {
@@ -395,9 +401,9 @@ namespace ParseXccdf
 
             return match;
         }
-        public List<Rule> ProcessChangeLog()
+        public void ProcessChangeLog()
         {
-            List<Rule> rules = new List<Rule>();
+            
             List<string> ruleChanges = GetChangeLog(this.FileNameAndPath);
             foreach(string change in ruleChanges)
             {
@@ -405,6 +411,7 @@ namespace ParseXccdf
                 // Key = 'HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\Security\cDigSig\cEUTLDownload'; ValueData = '0'; ValueName = 'bLoadSettingsFromURL'; ValueType = 'Dword'}
                 // match change with rule in rules list, change the checkContent to be the content in the changelog
                 string[] splits = change.Split(new string[] { "::" }, StringSplitOptions.RemoveEmptyEntries);
+                this.changeLog.Add(change);
                 foreach(Rule rule in this.Rules)
                 {
                     if (rule.Rules[0].GroupId == splits[0])
@@ -412,18 +419,422 @@ namespace ParseXccdf
                         // found a rule to replace check content
                         //Regex.Replace(rule.Rules[0].CheckContent, ".*", splits[2]);
                         rule.Rules[0].ModifiedCheckContent = true;
+                        rule.Rules[0].OriginalCheckContent = rule.Rules[0].CheckContent;
                         rule.Rules[0].CheckContent = splits[2];
+                        break;
                     }
                 }
             }
+        }
+        public static List<VRule> GetMultiLineRule(XmlNode RuleXml)
+        {
+            List<VRule> rules = new List<VRule>();
+
+
+
             return rules;
         }
-        public static void OutputStigToDisk(string Path, Stig OutputStig)
+        public static VRule GetSingleLineRule(XmlNode RuleXml)
+        {
+            VRule vRule = null;
+
+
+
+            return vRule;
+        }
+
+        public static List<Rule> PopulateRule(XmlNode RuleXml)
+        {
+            List<Rule> ruleList = new List<Rule>();
+            string type = VRule.GetRuleType(RuleXml);
+            string checkContent = "";
+            if (type == "RegistryRule")
+            {
+                if(RegistryVRule.IsMultilineRegEntry(checkContent))
+                {
+                    //ruleList = 
+                }
+                else
+                {
+
+                }
+            }
+            else if (type == "ManualRule")
+            {
+
+            }
+            else if (type == "HardCodedRule")
+            {
+
+            }
+
+
+
+
+                foreach (XmlNode child in RuleXml.ChildNodes)
+                {
+                }
+
+                // get rule type
+                // call isMultiLine method
+                // process rule/s
+
+
+                return ruleList;
+        }
+
+        public static List<Rule> PopulatePreProcessedRules(string FilePath)
+        {
+            // get log file to process manual changes
+            List<Rule> myList = new List<Rule>();
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load(FilePath);
+            XmlNodeList groupRules = xmlDoc.GetElementsByTagName("Group");
+
+            // get checkContent
+            // if multiline
+            // get multiple lines of checkContent
+            // foreach checkContent, create a new RULE object
+            // only diff is the check content, so all other properties are the same
+
+       
+
+
+            foreach (XmlNode node in groupRules)
+            {
+                string checkContent = VRule.GetCheckContent(node);
+                string ruleType = VRule.GetRuleType(node);
+                bool isMultiline = false;
+                switch(ruleType)
+                {
+                    case "RegistryRule":
+                        isMultiline = RegistryVRule.IsMultilineRegEntry((checkContent));
+                        break;
+                    case "ManualRule":
+                        isMultiline = ManualVRule.IsMultiline(checkContent);
+                        break;
+                    case "HardcodedRule":
+                        isMultiline = ManualVRule.IsMultiline(checkContent);
+                        break;
+                }
+                
+                //if(VRule.)
+                Rule rule = new Rule();
+                rule.FilePath = FilePath;
+                foreach (XmlNode child in node.ChildNodes)
+                {
+                    VRule vRule = new VRule();
+                    if (child.Name.ToLower() == "title")
+                    {
+
+                        rule.Title = child.InnerText;
+                    }
+                    else if (child.Name.ToLower() == "description")
+                    {
+                        rule.Description = child.InnerText;
+                    }
+                    else if (child.Name.ToLower() == "rule")
+                    {
+                        //vRule.RuleId = node.Attributes["id"].Value;
+                        //var newRule = new VRule();
+
+                        List<VRule> newRules = new List<VRule>();
+                        vRule.Severity = child.Attributes["severity"].Value;
+                        vRule.GroupId = node.Attributes["id"].InnerText;
+                        foreach (XmlNode ruleChildNode in child.ChildNodes)
+                        {
+
+                            if (ruleChildNode.Name.ToLower() == "title")
+                            {
+                                vRule.RuleTitle = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "description")
+                            {
+                                vRule.RuleDescription = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "ensure")
+                            {
+                                vRule.Ensure = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "version")
+                            {
+                                vRule.Version = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "ident")
+                            {
+                                vRule.Identifiers.Add(ruleChildNode.InnerText);
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "fixtext")
+                            {
+                                vRule.FixText = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "fix")
+                            {
+                                vRule.FixId = ruleChildNode.Attributes["id"].InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "check")
+                            {
+                                vRule.CheckSystem = ruleChildNode.Attributes["system"].Value;
+                                foreach (XmlNode checkChildNode in ruleChildNode.ChildNodes)
+                                {
+                                    if (checkChildNode.Name.ToLower() == "check-content")
+                                    {
+                                        vRule.CheckContent = checkChildNode.InnerText;
+
+                                        // get isAfinding and isNotAFinding
+                                        vRule.IsAFinding = VRule.GetIsAFindingString(vRule.CheckContent);
+                                        vRule.IsNotAFinding = VRule.GetIsNotAFindingString(vRule.CheckContent);
+
+                                        // determine rule type
+                                        // based on type, properties populated will be different
+                                        newRules = VRule.GetSpecificRule(vRule);
+                                        // maybe VRule static method to populate data based on rule type
+                                    }
+                                    else if (checkChildNode.Name.ToLower() == "check-content-ref")
+                                    {
+                                        vRule.CheckContentRefHref = checkChildNode.Attributes["href"].InnerText;
+                                    }
+                                }
+
+                            }
+                            else
+                            {
+                                string temp = ruleChildNode.InnerText;
+                            }
+                        }
+                        //if(newRule.Ensure == null || newRule.Ensure.Length == 0)
+                        // {
+                        //     newRule.Ensure = "Present";
+                        // }
+                        foreach (VRule r in newRules)
+                        {
+                            rule.Rules.Add(r);
+                        }
+
+                    }
+                }
+                //i++;
+                //newRules.Add(rule);
+            }
+
+
+
+            if (RegistryVRule.IsMultilineRegEntryFileCheck(FilePath))
+            {
+                List<Rule> rules = new List<Rule>();
+                XmlDocument xmlDoc1 = new XmlDocument();
+                xmlDoc.Load(FilePath);
+                XmlNodeList groupRules1 = xmlDoc1.GetElementsByTagName("Group");
+                foreach(XmlNode node in groupRules1)
+                {
+                    Rule rule = new Rule();
+                    List<Rule>multiList = new List<Rule>();
+                    rule.FilePath = FilePath;
+                    foreach (XmlNode child in node.ChildNodes)
+                    {
+                        VRule vRule = new VRule();
+                        if (child.Name.ToLower() == "title")
+                        {
+                            rule.Title = child.InnerText;
+                        }
+                        else if (child.Name.ToLower() == "description")
+                        {
+                            rule.Description = child.InnerText;
+                        }
+                        else if (child.Name.ToLower() == "rule")
+                        {
+                            List<VRule> newRules = new List<VRule>();
+                            vRule.Severity = child.Attributes["severity"].Value;
+                            vRule.GroupId = node.Attributes["id"].InnerText;
+                            foreach (XmlNode ruleChildNode in child.ChildNodes)
+                            {
+                                if (ruleChildNode.Name.ToLower() == "title")
+                                {
+                                    vRule.RuleTitle = ruleChildNode.InnerText;
+                                }
+                                else if (ruleChildNode.Name.ToLower() == "description")
+                                {
+                                    vRule.RuleDescription = ruleChildNode.InnerText;
+                                }
+                                else if (ruleChildNode.Name.ToLower() == "ensure")
+                                {
+                                    vRule.Ensure = ruleChildNode.InnerText;
+                                }
+                                else if (ruleChildNode.Name.ToLower() == "version")
+                                {
+                                    vRule.Version = ruleChildNode.InnerText;
+                                }
+                                else if (ruleChildNode.Name.ToLower() == "ident")
+                                {
+                                    vRule.Identifiers.Add(ruleChildNode.InnerText);
+                                }
+                                else if (ruleChildNode.Name.ToLower() == "fixtext")
+                                {
+                                    vRule.FixText = ruleChildNode.InnerText;
+                                }
+                                else if (ruleChildNode.Name.ToLower() == "fix")
+                                {
+                                    vRule.FixId = ruleChildNode.Attributes["id"].InnerText;
+                                }
+                                else if (ruleChildNode.Name.ToLower() == "check")
+                                {
+                                    vRule.CheckSystem = ruleChildNode.Attributes["system"].Value;
+                                    foreach (XmlNode checkChildNode in ruleChildNode.ChildNodes)
+                                    {
+                                        if (checkChildNode.Name.ToLower() == "check-content")
+                                        {
+                                            vRule.CheckContent = checkChildNode.InnerText;
+
+                                            // get isAfinding and isNotAFinding
+                                            vRule.IsAFinding = VRule.GetIsAFindingString(vRule.CheckContent);
+                                            vRule.IsNotAFinding = VRule.GetIsNotAFindingString(vRule.CheckContent);
+
+                                            // determine rule type
+                                            // based on type, properties populated will be different
+                                            newRules = VRule.GetSpecificRule(vRule);
+                                            // maybe VRule static method to populate data based on rule type
+                                        }
+                                        else if (checkChildNode.Name.ToLower() == "check-content-ref")
+                                        {
+                                            vRule.CheckContentRefHref = checkChildNode.Attributes["href"].InnerText;
+                                        }
+                                    }
+
+                                }
+                                else
+                                {
+                                    string temp = ruleChildNode.InnerText;
+                                }
+                            }
+                            //if(newRule.Ensure == null || newRule.Ensure.Length == 0)
+                            // {
+                            //     newRule.Ensure = "Present";
+                            // }
+                            foreach (VRule r in newRules)
+                            {
+                                rule.Rules.Add(r);
+                            }
+
+                        }
+                    }
+                }
+
+            }
+
+
+
+
+            //XmlNodeList groupRules = xmlDoc.GetElementsByTagName("Group");
+            int i = 0;
+            /*
+            foreach (XmlNode node in groupRules)
+            {
+                Rule rule = new Rule();
+                rule.FilePath = FilePath;
+                foreach (XmlNode child in node.ChildNodes)
+                {
+                    VRule vRule = new VRule();
+                    if (child.Name.ToLower() == "title")
+                    {
+
+                        rule.Title = child.InnerText;
+                    }
+                    else if (child.Name.ToLower() == "description")
+                    {
+                        rule.Description = child.InnerText;
+                    }
+                    else if (child.Name.ToLower() == "rule")
+                    {
+                        //vRule.RuleId = node.Attributes["id"].Value;
+                        //var newRule = new VRule();
+
+                        List<VRule> newRules = new List<VRule>();
+                        vRule.Severity = child.Attributes["severity"].Value;
+                        vRule.GroupId = node.Attributes["id"].InnerText;
+                        foreach (XmlNode ruleChildNode in child.ChildNodes)
+                        {
+
+                            if (ruleChildNode.Name.ToLower() == "title")
+                            {
+                                vRule.RuleTitle = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "description")
+                            {
+                                vRule.RuleDescription = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "ensure")
+                            {
+                                vRule.Ensure = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "version")
+                            {
+                                vRule.Version = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "ident")
+                            {
+                                vRule.Identifiers.Add(ruleChildNode.InnerText);
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "fixtext")
+                            {
+                                vRule.FixText = ruleChildNode.InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "fix")
+                            {
+                                vRule.FixId = ruleChildNode.Attributes["id"].InnerText;
+                            }
+                            else if (ruleChildNode.Name.ToLower() == "check")
+                            {
+                                vRule.CheckSystem = ruleChildNode.Attributes["system"].Value;
+                                foreach (XmlNode checkChildNode in ruleChildNode.ChildNodes)
+                                {
+                                    if (checkChildNode.Name.ToLower() == "check-content")
+                                    {
+                                        vRule.CheckContent = checkChildNode.InnerText;
+
+                                        // get isAfinding and isNotAFinding
+                                        vRule.IsAFinding = VRule.GetIsAFindingString(vRule.CheckContent);
+                                        vRule.IsNotAFinding = VRule.GetIsNotAFindingString(vRule.CheckContent);
+
+                                        // determine rule type
+                                        // based on type, properties populated will be different
+                                        newRules = VRule.GetSpecificRule(vRule);
+                                        // maybe VRule static method to populate data based on rule type
+                                    }
+                                    else if (checkChildNode.Name.ToLower() == "check-content-ref")
+                                    {
+                                        vRule.CheckContentRefHref = checkChildNode.Attributes["href"].InnerText;
+                                    }
+                                }
+
+                            }
+                            else
+                            {
+                                string temp = ruleChildNode.InnerText;
+                            }
+                        }
+                        //if(newRule.Ensure == null || newRule.Ensure.Length == 0)
+                        // {
+                        //     newRule.Ensure = "Present";
+                        // }
+                        foreach(VRule r in newRules)
+                        {
+                            rule.Rules.Add(r);
+                        }
+                        
+                    }
+                }
+                i++;
+                rules.Add(rule);
+            }
+            */
+            return myList;
+        }
+        public static void OutputStigToDisk(string Path, ref Stig OutputStig)
         {
             XmlDocument doc = new XmlDocument();
             XmlDeclaration xmlDeclaration = doc.CreateXmlDeclaration("1.0", "UTF-8", null);
             doc.AppendChild(xmlDeclaration);
-            XmlElement root = doc.CreateElement("DISA");
+            XmlElement root = doc.CreateElement("DISASTIG");
             root.SetAttribute("version", OutputStig.StigVersion);
             root.SetAttribute("classification", OutputStig.Classification);
             root.SetAttribute("customname", "");
@@ -444,15 +855,25 @@ namespace ParseXccdf
             {
                 if (rule.Rules[0].DscResource == "None")
                 {
-                    XmlElement manRuleElement = doc.CreateElement("ManualRule");
-                    manRuleElement.SetAttribute("dscresourcemodule", "None");
-                    root.AppendChild(manRuleElement);
-                }
-                else if (rule.Rules[0].DscResource == "RegistryPolicyFile")
-                {
-                    XmlElement regRuleElement = doc.CreateElement("RegistryRule");
-                    regRuleElement.SetAttribute("dscresourcemodule", "PSDscResources");
-                    root.AppendChild(regRuleElement);
+                    // check if doc contains ManualRule as a child of DISA
+                    // if so, just add the rule as a child
+                    // if not create the node and add the rule as a child
+
+                    // could be a manual rule or a document rule
+                    XmlNode existingNode = doc.SelectSingleNode("/DISASTIG/ManualRule");
+                    XmlElement manElement;
+                    if(existingNode != null)
+                    {
+                        manElement = (XmlElement)existingNode;
+                        manElement.SetAttribute("dscresourcemodule", "None");
+                        root.AppendChild(manElement);
+                    }
+                    else
+                    {
+                        manElement = doc.CreateElement("ManualRule");
+                        manElement.SetAttribute("dscresourcemodule", "None");
+                        root.AppendChild(manElement);
+                    }
 
                     XmlElement ruleElement = doc.CreateElement("Rule");
                     ruleElement.SetAttribute("id", rule.Rules[0].GroupId);
@@ -460,7 +881,7 @@ namespace ParseXccdf
                     ruleElement.SetAttribute("conversionstatus", "");
                     ruleElement.SetAttribute("title", rule.Rules[0].RuleTitle);
                     ruleElement.SetAttribute("dscresource", "RegistryPolicyFile");
-                    regRuleElement.AppendChild(ruleElement);
+                    manElement.AppendChild(ruleElement);
 
                     XmlElement ruleChild = doc.CreateElement("Description");
                     ruleChild.InnerText = rule.Description;
@@ -470,6 +891,60 @@ namespace ParseXccdf
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("Ensure");
+                    //ruleChild.InnerText = rule.Rules[0].Ensure;
+                    ruleChild.InnerText = "Present";
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("IsNullOrEmpty");
+                    ruleChild.InnerText = "False";
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("LegacyId");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("OrganizationValueRequired");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("OrganizationValueTestString");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("RawString");
+                    ruleElement.AppendChild(ruleChild);
+                }
+                else if (rule.Rules[0].DscResource == "RegistryPolicyFile")
+                {
+                    XmlElement regElement;
+                    RegistryVRule regVRule = new RegistryVRule();
+                    XmlNode existingNode = doc.SelectSingleNode("/DISASTIG/RegistryRule");
+                    if (existingNode != null)
+                    {
+                        regElement = (XmlElement)existingNode;
+                        //regElement.SetAttribute("dscresourcemodule", "PDDscResources");
+                        root.AppendChild(regElement);
+                    }
+                    else
+                    {
+                        regElement = doc.CreateElement("RegistryRule");
+                        regElement.SetAttribute("dscresourcemodule", "PDDscResources");
+                        root.AppendChild(regElement);
+                    }
+
+                    XmlElement ruleElement = doc.CreateElement("Rule");
+                    ruleElement.SetAttribute("id", rule.Rules[0].GroupId);
+                    ruleElement.SetAttribute("severity", rule.Rules[0].Severity);
+                    ruleElement.SetAttribute("conversionstatus", "");
+                    ruleElement.SetAttribute("title", rule.Title);
+                    regElement.AppendChild(ruleElement);
+
+                    XmlElement ruleChild = doc.CreateElement("Description");
+                    ruleChild.InnerText = rule.Rules[0].RuleDescription;
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("DuplicateOf");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("Ensure");
+                    //ruleChild.InnerText = rule.Rules[0].Ensure;
                     ruleChild.InnerText = "Present";
                     ruleElement.AppendChild(ruleChild);
 
@@ -478,8 +953,8 @@ namespace ParseXccdf
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("Key");
-                    RegistryVRule registryVRule = RegistryVRule.Clone(rule.Rules[0]);
-                    ruleChild.InnerText = registryVRule.Key;
+                    regVRule = (RegistryVRule)rule.Rules[0];
+                    ruleChild.InnerText = regVRule.Data.RegistryKey;
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("LegacyId");
@@ -495,17 +970,96 @@ namespace ParseXccdf
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("ValueData");
-                    RegistryVRule registryVRule1 = RegistryVRule.Clone(rule.Rules[0]);
+                    regVRule = (RegistryVRule)rule.Rules[0];
+                    ruleChild.InnerText = regVRule.Data.RegistryValueData;
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("ValueName");
-                    RegistryVRule registryVRule2 = RegistryVRule.Clone(rule.Rules[0]);
+                    regVRule = (RegistryVRule)rule.Rules[0];
+                    ruleChild.InnerText = regVRule.Data.RegistryValueName;
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("ValueType");
-                    RegistryVRule registryVRule3 = RegistryVRule.Clone(rule.Rules[0]);
+                    regVRule = (RegistryVRule)rule.Rules[0];
+                    ruleChild.InnerText = regVRule.Data.RegistryType;
                     ruleElement.AppendChild(ruleChild);
 
+                    ruleElement.SetAttribute("dscresource", regVRule.GetDscResource(regVRule.FixText));
+                }
+                else if (rule.Rules[0].DscResource == "Registry")
+                {
+                    XmlElement regElement;
+                    RegistryVRule regVRule = new RegistryVRule();
+                    XmlNode existingNode = doc.SelectSingleNode("/DISASTIG/RegistryRule");
+                    if (existingNode != null)
+                    {
+                        regElement = (XmlElement)existingNode;
+                        //regElement.SetAttribute("dscresourcemodule", "PDDscResources");
+                        root.AppendChild(regElement);
+                    }
+                    else
+                    {
+                        regElement = doc.CreateElement("RegistryRule");
+                        regElement.SetAttribute("dscresourcemodule", "PDDscResources");
+                        root.AppendChild(regElement);
+                    }
+
+                    XmlElement ruleElement = doc.CreateElement("Rule");
+                    ruleElement.SetAttribute("id", rule.Rules[0].GroupId);
+                    ruleElement.SetAttribute("severity", rule.Rules[0].Severity);
+                    ruleElement.SetAttribute("conversionstatus", "");
+                    ruleElement.SetAttribute("title", rule.Title);
+                    regElement.AppendChild(ruleElement);
+
+                    XmlElement ruleChild = doc.CreateElement("Description");
+                    ruleChild.InnerText = rule.Rules[0].RuleDescription;
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("DuplicateOf");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("Ensure");
+                    //ruleChild.InnerText = rule.Rules[0].Ensure;
+                    ruleChild.InnerText = "Present";
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("IsNullOrEmpty");
+                    ruleChild.InnerText = "False";
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("Key");
+                    regVRule = (RegistryVRule)rule.Rules[0];
+                    ruleChild.InnerText = regVRule.Data.RegistryKey;
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("LegacyId");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("OrganizationValueRequired");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("OrganizationValueTestString");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("RawString");
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("ValueData");
+                    regVRule = (RegistryVRule)rule.Rules[0];
+                    ruleChild.InnerText = regVRule.Data.RegistryValueData;
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("ValueName");
+                    regVRule = (RegistryVRule)rule.Rules[0];
+                    ruleChild.InnerText = regVRule.Data.RegistryValueName;
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("ValueType");
+                    regVRule = (RegistryVRule)rule.Rules[0];
+                    ruleChild.InnerText = regVRule.Data.RegistryType;
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleElement.SetAttribute("dscresource", regVRule.GetDscResource(regVRule.FixText));
                 }
 
             }

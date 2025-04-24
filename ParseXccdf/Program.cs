@@ -76,96 +76,6 @@ namespace ParseXccdf
 
             return rules;
         }
-        static List<Rule> PopulatePreProcessedRules(string FilePath)
-        {
-            // get log file to process manual changes
-            
-            List<Rule> rules = new List<Rule>();
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.Load(FilePath);
-
-            XmlNodeList groupRules = xmlDoc.GetElementsByTagName("Group");
-
-            foreach(XmlNode node in groupRules)
-            {
-                Rule rule = new Rule();
-                rule.FilePath = FilePath;
-                foreach (XmlNode child in node.ChildNodes)
-                {
-                    VRule vRule = new VRule();
-                    if (child.Name.ToLower() == "title")
-                    {
-                        rule.Title = child.InnerText;
-                    }
-                    else if (child.Name.ToLower() == "description")
-                    {
-                        rule.Description = child.InnerText;
-                    }
-                    else if (child.Name.ToLower() == "rule")
-                    {
-                        //vRule.RuleId = node.Attributes["id"].Value;
-                        var newRule = new VRule();
-                        vRule.Severity = child.Attributes["severity"].Value;
-                        vRule.GroupId = node.Attributes["id"].InnerText;
-                        foreach (XmlNode ruleChildNode in child.ChildNodes)
-                        {
-                            if (ruleChildNode.Name.ToLower() == "title")
-                            {
-                                vRule.RuleTitle = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "description")
-                            {
-                                vRule.RuleDescription = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "version")
-                            {
-                                vRule.Version = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "ident")
-                            {
-                                vRule.Identifiers.Add(ruleChildNode.InnerText);
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "fixtext")
-                            {
-                                vRule.FixText = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "fix")
-                            {
-                                vRule.FixId = ruleChildNode.Attributes["id"].InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "check")
-                            {
-                                vRule.CheckSystem = ruleChildNode.Attributes["system"].Value;
-                                foreach (XmlNode checkChildNode in ruleChildNode.ChildNodes)
-                                {
-                                    if (checkChildNode.Name.ToLower() == "check-content")
-                                    {
-                                        vRule.CheckContent = checkChildNode.InnerText;
-                                        // determine rule type
-                                        // based on type, properties populated will be different
-                                        newRule =  VRule.GetSpecificRule(vRule);
-                                        // maybe VRule static method to populate data based on rule type
-                                    }
-                                    else if (checkChildNode.Name.ToLower() == "check-content-ref")
-                                    {
-                                        vRule.CheckContentRefHref = checkChildNode.Attributes["href"].InnerText;
-                                    }
-                                }
-
-                            }
-                            else
-                            {
-                                string temp = ruleChildNode.InnerText;
-                            }
-                        }
-                        rule.Rules.Add(newRule);
-                    }
-                }
-                rules.Add(rule);
-            }
-
-            return rules;
-        }
         static List<string> ListVRules(string FilePath)
         {
             var list = new List<string>();
@@ -254,7 +164,8 @@ namespace ParseXccdf
             Stig stig = new Stig();
             stig.FilePath = FilePath;
             stig.OriginalFile = FilePath;
-            stig.Rules = PopulatePreProcessedRules(FilePath);
+            //stig.Rules = PopulatePreProcessedRules(FilePath);
+            stig.Rules = Stig.PopulatePreProcessedRules(FilePath);
             stig.Product = GetPreProcessedProduct(FilePath, ref stig);
             // could move this to the GetPreProcessedProduct function
             if (stig.IsOfficeProduct) 
@@ -703,7 +614,7 @@ namespace ParseXccdf
                 Console.WriteLine($"Converting {stigToConvertArg}");
                 argDictionary.TryGetValue("--OutputFilePath", out string outputFilePath);
                 Stig stig = GetSingleStig(stigToConvertArg);
-                Stig.OutputStigToDisk(outputFilePath, stig);
+                Stig.OutputStigToDisk(outputFilePath, ref stig);
                 Console.WriteLine($"Conversion completed");
             }
             else

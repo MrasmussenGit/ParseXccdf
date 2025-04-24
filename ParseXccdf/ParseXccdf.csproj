@@ -43,6 +43,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HardCodedVRule.cs" />
     <Compile Include="ManualVRule.cs" />
     <Compile Include="PostProcessedVRule.cs" />
     <Compile Include="Program.cs" />
