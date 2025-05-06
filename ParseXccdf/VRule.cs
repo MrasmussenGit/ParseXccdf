@@ -196,6 +196,9 @@ namespace ParseXccdf
                 }
             }
 
+            // clean checkContent - remove newlines
+
+
             return checkContent;
         }
         public static string GetRuleType(XmlNode RuleXml)

@@ -502,6 +502,7 @@ namespace ParseXccdf
 
             foreach (XmlNode node in groupRules)
             {
+                List<string> splitCheckContent = new List<string>();
                 string checkContent = VRule.GetCheckContent(node);
                 string ruleType = VRule.GetRuleType(node);
                 bool isMultiline = false;
@@ -509,6 +510,8 @@ namespace ParseXccdf
                 {
                     case "RegistryRule":
                         isMultiline = RegistryVRule.IsMultilineRegEntry((checkContent));
+                        if (isMultiline) { splitCheckContent = RegistryVRule.RegGetMultilineCheckContent(checkContent); }
+                        else { splitCheckContent.Add(checkContent); }
                         break;
                     case "ManualRule":
                         isMultiline = ManualVRule.IsMultiline(checkContent);
@@ -517,9 +520,14 @@ namespace ParseXccdf
                         isMultiline = ManualVRule.IsMultiline(checkContent);
                         break;
                 }
-                
-                //if(VRule.)
-                Rule rule = new Rule();
+
+                foreach(string content in splitCheckContent)
+                {
+
+                }
+
+                    //if(VRule.)
+                    Rule rule = new Rule();
                 rule.FilePath = FilePath;
                 foreach (XmlNode child in node.ChildNodes)
                 {

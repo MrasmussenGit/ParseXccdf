@@ -170,14 +170,6 @@ namespace ParseXccdf
 
             return data;
         }
-        public List<RegistryData> PopulateMultiLineRegistryData(string CheckContent)
-        {
-            List<RegistryData> rc = new List<RegistryData>();
-
-
-
-            return rc;
-        }
         public static bool IsMultilineRegEntry(string CheckContent)
         {
             bool isMultiline = false;
@@ -356,22 +348,19 @@ namespace ParseXccdf
 
             return rules;
         }
-        public static List<Rule> GetMultilineRules(Rule Rule)
-        {
-            List<Rule> rules = new List<Rule>();
-            string[] regRules = SplitMultilineContent(Rule.Rules[0].CheckContent);
-            foreach(string rule in regRules)
-            {
-                //RegistryVRule newRule = RegistryVRule.Clone(Rule);
-
-            }
-
-
-            return rules;
-        }
         public static List<Rule> CreateRegFromMultiline()
         {
             return new List<Rule>();
+        }
+
+        public static List<string> RegGetMultilineCheckContent(string CheckContent)
+        {
+
+
+
+
+
+            return new List<string> { CheckContent };
         }
     }
 }
