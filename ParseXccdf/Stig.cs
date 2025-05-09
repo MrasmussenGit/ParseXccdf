@@ -10,6 +10,7 @@ using System.Web;
 using System.Xml;
 using System.Xml.Linq;
 using System.Runtime.CompilerServices;
+using System.Collections;
 
 namespace ParseXccdf
 {
@@ -150,6 +151,103 @@ namespace ParseXccdf
         {
             set { originalFile = value; }
             get { return originalFile; }
+        }
+
+        private static List<object> FindDuplicates(ArrayList arrayList)
+        {
+            Dictionary<object, int> countDict = new Dictionary<object, int>();
+            List<object> duplicates = new List<object>();
+
+            foreach (var item in arrayList)
+            {
+                if (countDict.ContainsKey(item))
+                {
+                    countDict[item]++;
+                }
+                else
+                {
+                    countDict[item] = 1;
+                }
+            }
+
+            foreach (var kvp in countDict)
+            {
+                if (kvp.Value > 1)
+                {
+                    for (int i = 0; i < kvp.Value - 1; i++)
+                    {
+                        duplicates.Add(kvp.Key);
+                    }
+
+                }
+            }
+
+            return duplicates;
+        }
+
+        public static void GetFileInfo(string FilePath)
+        {
+            XDocument xmlDoc = XDocument.Load(FilePath);
+            XElement root = xmlDoc.Root;
+            ArrayList rules = new ArrayList();
+
+            void TraverseElement(XElement element, int level = 0)
+            {
+
+                foreach (XAttribute attribute in element.Attributes())
+                {
+                    if (attribute.Name.ToString().Trim().Equals("id"))
+                    {
+                        rules.Add(attribute.Value);
+                    }
+                }
+
+                foreach (XElement child in element.Elements())
+                {
+                    TraverseElement(child, level + 1);
+                }
+            }
+
+            TraverseElement(root);
+
+            List<object> dupList = FindDuplicates(rules);
+            List<object> usedList = new List<object>();
+            int count = 0;
+            Console.WriteLine($"{FilePath}");
+            if (dupList.Count <= 0)
+            {
+                Console.WriteLine("\tNo Duplicates");
+            }
+            foreach (var dup in dupList)
+            {
+
+                count = dupList.Count(item => item == dup);
+
+                if (!usedList.Contains(dup))
+                {
+                    Console.WriteLine($"\tRule '{dup}' appears {count + 1} total times.");
+                    usedList.Add(dup);
+                }
+
+            }
+
+        }
+
+        public static void GetFolderInfo(string DirectoryPath)
+        {
+            if (!Directory.Exists(DirectoryPath))
+            {
+                Console.WriteLine($"Directory: {DirectoryPath} does not exist");
+                return;
+            }
+            else
+            {
+                string[] files = Directory.GetFiles(DirectoryPath, "*", SearchOption.AllDirectories);
+                foreach (string file in files)
+                {
+                    GetFileInfo(file);
+                }
+            }
         }
 
         public static List<String> GetChangeLog(string FilePath)

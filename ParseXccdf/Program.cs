@@ -582,7 +582,9 @@ namespace ParseXccdf
         {
 
             /*
-             Command line 
+             Command line
+            --filePath "C:\git\PowerStig\source\StigData\Processed\WindowsClient-10-3.3.xml"
+            --folderPath "C:\git\PowerStig\source\StigData\Processed"
             --preprocessedFolderPath "C:\git\PowerStig\source\StigData\Archive" --PostProcessedFolderPath "C:\git\PowerStig\source\StigData\Processed"
             --listRulesFilePath "C:\git\PowerStig\source\StigData\Archive\Linux.RHEL\U_RHEL_9_STIG_V2R3_Manual-xccdf.xml"
             --ConvertDisaStigFilePath "C:\git\PowerStig\source\StigData\Archive\Adobe\U_Adobe_Acrobat_Pro_DC_Continuous_V2R1_Manual-xccdf.xml" --OutputFilePath "c:\test"
@@ -598,8 +600,17 @@ namespace ParseXccdf
                     argDictionary[args[i]] = args[i + 1];
                 }
             }
+            // look for duplicates in a single file, could be pre or post processed
+            if (argDictionary.TryGetValue("--FilePath", out string filePathArg))
+            {
+                Stig.GetFileInfo(filePathArg);
+            }
+            else if (argDictionary.TryGetValue("--FolderPath", out string folderPathArg))
+            {
+                Stig.GetFolderInfo(folderPathArg);
+            }
             // list rules of a pre or post processed xml
-            if (argDictionary.TryGetValue("--listRulesFilePath", out string ruleFile))
+            else if (argDictionary.TryGetValue("--listRulesFilePath", out string ruleFile))
             {
                 Console.WriteLine($"Rules in file: {ruleFile}");
                 //string[] rules = ListVRules(ruleFile);
