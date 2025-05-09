@@ -152,9 +152,10 @@ namespace ParseXccdf
             set { originalFile = value; }
             get { return originalFile; }
         }
-
         private static List<object> FindDuplicates(ArrayList arrayList)
         {
+            // finds duplicates in the arrayList and returns them
+
             Dictionary<object, int> countDict = new Dictionary<object, int>();
             List<object> duplicates = new List<object>();
 
@@ -595,9 +596,7 @@ namespace ParseXccdf
             // foreach checkContent, create a new RULE object
             // only diff is the check content, so all other properties are the same
 
-       
-
-
+      
             foreach (XmlNode node in groupRules)
             {
                 List<string> splitCheckContent = new List<string>();
@@ -1177,6 +1176,71 @@ namespace ParseXccdf
 
 
 
+        }
+        public static List<string> GetPreProcessedRuleList(string FilePath)
+        {
+            List<string> ruleIdList = new List<string>();
+            var list = new List<string>();
+            File.ReadAllText(FilePath);
+            XElement root = XElement.Parse(File.ReadAllText(FilePath));
+            string pattern = @"v-\d{3,6}$|v-\d{3,6}\.\w$";
+            Regex regex = new Regex(pattern);
+
+            var elements = from el in root.Descendants()
+                           where el.Attribute("id") != null &&
+                           regex.IsMatch(el.Attribute("id").Value.ToLower())
+                           select el.Attribute("id");
+
+            ruleIdList = elements.Select(attr => attr.Value).ToList();
+
+            return ruleIdList;
+
+        }
+        public static List<string> GetPostProcessedRuleList(string FilePath)
+        {
+            List<string> ruleIdList = new List<string>();
+            var list = new List<string>();
+            File.ReadAllText(FilePath);
+            XElement root = XElement.Parse(File.ReadAllText(FilePath));
+            string pattern = @"v-\d{3,6}$|v-\d{3,6}\.\w$";
+            Regex regex = new Regex(pattern);
+
+            var elements = from el in root.Descendants()
+                           where el.Attribute("id") != null &&
+                           regex.IsMatch(el.Attribute("id").Value.ToLower())
+                           select el.Attribute("id");
+
+            ruleIdList = elements.Select(attr => attr.Value).ToList();
+
+            return ruleIdList;
+        }
+        public static void CompareStigs(List<string>PreProcessedList, List<string>PostProcessedList)
+        {
+            List<string> normalizedPreProcessedList = PreProcessedList.Select(s => Regex.Replace(s, @"\.\w+$", "")).ToList();
+            List<string> normalizedPostProcessedList = PostProcessedList.Select(s => Regex.Replace(s, @"\.\w+$", "")).ToList();
+
+
+            var onlyInPreProcessedList = normalizedPreProcessedList.Except(normalizedPostProcessedList);
+            var onlyInPostProcessedList = normalizedPostProcessedList.Except(normalizedPreProcessedList);
+
+            if(onlyInPreProcessedList.Count() <= 0)
+            {
+                Console.WriteLine("Values in PreProcessedList but not in PostProcessedList: \nNone");
+            }
+            else
+            {
+                Console.WriteLine("Values in PreProcessedList but not in PostProcessedList: \n" + string.Join("\n", onlyInPreProcessedList));
+            }
+            if (onlyInPostProcessedList.Count() <= 0)
+            {
+                Console.WriteLine("Values in PostProcessedList but not in PreProcessedList: \nNone");
+            }
+            else
+            {
+                Console.WriteLine("Values in PostProcessedList but not in PreProcessedList: \n" + string.Join("\n", onlyInPostProcessedList));
+            }
+            
+            
         }
     }
 }

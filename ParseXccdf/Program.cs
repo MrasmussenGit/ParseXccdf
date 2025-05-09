@@ -583,15 +583,24 @@ namespace ParseXccdf
 
             /*
              Command line
-            --filePath "C:\git\PowerStig\source\StigData\Processed\WindowsClient-10-3.3.xml"
-            --folderPath "C:\git\PowerStig\source\StigData\Processed"
-            --preprocessedFolderPath "C:\git\PowerStig\source\StigData\Archive" --PostProcessedFolderPath "C:\git\PowerStig\source\StigData\Processed"
-            --listRulesFilePath "C:\git\PowerStig\source\StigData\Archive\Linux.RHEL\U_RHEL_9_STIG_V2R3_Manual-xccdf.xml"
-            --ConvertDisaStigFilePath "C:\git\PowerStig\source\StigData\Archive\Adobe\U_Adobe_Acrobat_Pro_DC_Continuous_V2R1_Manual-xccdf.xml" --OutputFilePath "c:\test"
+            # filePath will look for duplicate rules in a single STIG file
+                --filePath "C:\Demo\Duplicates\Oracle-Linux-8-2.3.xml"
+            # folderPath will look for duplicate rules in all of the files in a folder
+                --folderPath "C:\git\PowerStig\source\StigData\Processed
+            # preprecessedFilePath and PostPrcessedFilePath will compare two STIGs, outputing values missing from one or the other file
+                --preprocessedFilePath "C:\git\PowerStig\source\StigData\Archive\Windows.Client\U_MS_Windows_10_STIG_V3R3_Manual-xccdf.xml" --postprocessedFilePath "C:\git\PowerStig\source\StigData\Processed\WindowsClient-10-3.3.xml"
+            # preprecessedFolderPath and PostPrcessedFolderPath will compare two folders, matching STIGS and outputing duplicates (work in progress)
+                --preprocessedFolderPath "C:\git\PowerStig\source\StigData\Archive" --PostProcessedFolderPath "C:\git\PowerStig\source\StigData\Processed"
+            # list rule IDs of a single STIG file
+                --listRulesFilePath "C:\git\PowerStig\source\StigData\Archive\Linux.RHEL\U_RHEL_9_STIG_V2R3_Manual-xccdf.xml"
+            # converts a DISA stig to a DSC compatible XML document (work in progress)
+                --ConvertDisaStigFilePath "C:\git\PowerStig\source\StigData\Archive\Adobe\U_Adobe_Acrobat_Pro_DC_Continuous_V2R1_Manual-xccdf.xml" --OutputFilePath "c:\test"
              */
             var argDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             string preprocessedFolderPath = String.Empty;
             string postprocessedFolderPath = String.Empty;
+            string preprocessedFilePath = String.Empty;
+            string postprocessedFilePath = String.Empty;
 
             for (int i = 0; i < args.Length; i += 2)
             {
@@ -630,6 +639,31 @@ namespace ParseXccdf
             }
             else
             {
+                // adding comparing two files (a pre and post presumably),  Once parsing CheckContent is completed, go back to the 
+                // original, commented out section below
+
+                if (argDictionary.TryGetValue("--preprocessedFilePath", out string preFilePathArg))
+                {
+                    preprocessedFilePath = preFilePathArg;
+                }
+
+                if (argDictionary.TryGetValue("--postprocessedFilePath", out string postFilePathArg))
+                {
+                    postprocessedFilePath = postFilePathArg;
+                }
+
+                if (preprocessedFilePath.Length <= 0 && postprocessedFilePath.Length <= 0)
+                {
+                    Console.WriteLine("Enter a --PreProcessedFilePath and a --PostProcessedFilePath to continue.");
+                }
+                else
+                {
+                    List<string> postList = Stig.GetPostProcessedRuleList(postprocessedFilePath);
+                    List<string> preList = Stig.GetPreProcessedRuleList(preFilePathArg);
+                    Stig.CompareStigs(preList, postList);
+                }
+
+                /*
                 if (argDictionary.TryGetValue("--preprocessedFolderPath", out string preFolderPathArg))
                 {
                     preprocessedFolderPath = preFolderPathArg;
@@ -646,6 +680,12 @@ namespace ParseXccdf
                 }
                 else
                 {
+                    // list of rules in one file but not in the other
+                    List<string> postProcessedRules = Stig.GetPostProcessedRuleList(postprocessedFolderPath);
+                    List<string> preProcessedRules = Stig.GetPreProcessedRuleList(preprocessedFolderPath);
+
+
+
                     ArrayList xccdList = GetPreProcessedStigs(preprocessedFolderPath);
                     ArrayList xmlList = GetPostProcessedStigs(postprocessedFolderPath);
 
@@ -658,6 +698,8 @@ namespace ParseXccdf
                         Console.WriteLine(ex.Message);
                     }
                 }
+                */
+                // use the above to check ALL files in a folder, populate the STIG object with the original file used to match the pre and post stig
             }
         }
     }
