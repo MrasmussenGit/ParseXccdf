@@ -269,6 +269,75 @@ namespace ParseXccdf
             return type;
             //return ruleType;
         }
+        public static string GetRuleType(string CheckContent)
+        {
+            List<VRule> rules = new List<VRule>();
+            string type = "";
+            // original code has trim extra lines from content
+
+            if (IsRegistryRule(CheckContent))
+            {
+                type = "RegistryRule";
+            }
+            else if (IsHardCodedRule(CheckContent))
+            {
+                type = "HardCodedRule";
+            }
+            else if (IsAccountPolicyRule(CheckContent))
+            {
+            }
+            else if (IsAuditPolicyRule(CheckContent))
+            {
+            }
+            else if (IsDnsServerSettingRule(CheckContent))
+            {
+            }
+            else if (IsDnsServerRootHintRule(CheckContent))
+            {
+
+            }
+            else if (IsFileContentRule(CheckContent))
+            {
+
+            }
+            else if (IsGroupRule(CheckContent))
+            {
+
+            }
+            else if (IsIISLoggingRule(CheckContent))
+            {
+
+            }
+            else if (IsGroupRule(CheckContent))
+            {
+
+            }
+            else if (IsMimeTypeRule(CheckContent))
+            {
+
+            }
+            else if (IsPermissionRule(CheckContent))
+            {
+
+            }
+            else if (IsProcessMitigationRule(CheckContent))
+            {
+
+            }
+            else if (IsSecurityOptionsRule(CheckContent))
+            {
+
+            }
+            else
+            {
+                type = "ManualRule";
+            }
+            if(type == null || type.Length == 0)
+            {
+                type = "ManualRule";
+            }
+            return type;
+        }
         public static List<VRule> GetSpecificRule(VRule VRule)
         {
             List<VRule> rules = new List<VRule>();
@@ -341,11 +410,42 @@ namespace ParseXccdf
                 return rules;
             //return ruleType;
         }
+        public static VRule PopulateAdditionalData(VRule Rule)
+        {
+            // switch on Rule type
+            // call specific populate of that type
+            switch(Rule.RuleType)
+            {
+                case "RegistryRule" :
+                    RegistryVRule newRegRule = new RegistryVRule();
+                    RegistryVRule.CopyProperties(Rule, newRegRule);
+                    newRegRule = RegistryVRule.PopulateRegistryVRule(newRegRule);
+                    return newRegRule;
+
+                    break;
+                case "HardCodedRule":
+                    break;
+            }
+
+
+            return Rule;
+        }
+        public static RegistryVRule PopulateRegistryVRule(RegistryVRule Rule)
+        {
+
+            Rule.Data.RegistryKey = RegistryVRule.GetRegKeyFromContent(Rule.CheckContent);
+            Rule.Data.RegistryValueName = RegistryVRule.GetRegValueName(Rule.CheckContent);
+            Rule.Data.RegistryType = RegistryVRule.GetRegValueDataType(Rule.CheckContent);
+            Rule.Data.RegistryValueData = RegistryVRule.GetRegValueData(Rule.CheckContent);
+
+            return Rule;
+        }
 
         #region ConvertToTypes
         private static List<RegistryVRule> ConvertToRegRule(VRule Rule)
         {
-            RegistryVRule regVRule = RegistryVRule.Clone(Rule);
+            RegistryVRule regVRule = new RegistryVRule(); 
+            RegistryVRule.CopyProperties(Rule, regVRule);
             regVRule.IsAFinding = VRule.GetIsAFindingString(Rule.CheckContent);
             regVRule.IsNotAFinding = VRule.GetIsNotAFindingString(Rule.CheckContent);
 

@@ -4,6 +4,7 @@ using System.Data;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -113,6 +114,16 @@ namespace ParseXccdf
             return string.Join("",newFixText);
 
         }
+        public static void CopyProperties<T>(T source, T target)
+        {
+            foreach (PropertyInfo prop in typeof(T).GetProperties())
+            {
+                if (prop.CanRead && prop.CanWrite)
+                {
+                    prop.SetValue(target, prop.GetValue(source));
+                }
+            }
+        }
         public static RegistryVRule Clone(VRule Rule)
         {
             RegistryVRule newVRule = new RegistryVRule();
@@ -172,6 +183,10 @@ namespace ParseXccdf
         }
         public static bool IsMultilineRegEntry(string CheckContent)
         {
+
+            // stub out as false until mutliline is worked better
+            return false;
+            /*
             bool isMultiline = false;
             string pattern = @"HKEY_(LOCAL_MACHINE|CURRENT_USER|CLASSES_ROOT|USERS|CURRENT_CONFIG)\\[\w\\]+";
             Regex regex = new Regex(pattern);
@@ -187,7 +202,8 @@ namespace ParseXccdf
                     string temp = "";
                 }
             }
-            return isMultiline; 
+            return isMultiline;
+            */
         }
         public static bool IsMultilineRegEntryFileCheck(string FilePath)
         {
