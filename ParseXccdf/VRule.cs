@@ -211,7 +211,7 @@ namespace ParseXccdf
 
             if (IsRegistryRule(checkContent))
             {
-                type = "RegistryRule";
+                type = "RegistryPolicyFile";
             }
             else if (IsHardCodedRule(checkContent))
             {
@@ -277,7 +277,7 @@ namespace ParseXccdf
 
             if (IsRegistryRule(CheckContent))
             {
-                type = "RegistryRule";
+                type = "RegistryPolicyFile";
             }
             else if (IsHardCodedRule(CheckContent))
             {
@@ -416,7 +416,7 @@ namespace ParseXccdf
             // call specific populate of that type
             switch(Rule.RuleType)
             {
-                case "RegistryRule" :
+                case "RegistryPolicyFile":
                     RegistryVRule newRegRule = new RegistryVRule();
                     RegistryVRule.CopyProperties(Rule, newRegRule);
                     newRegRule = RegistryVRule.PopulateRegistryVRule(newRegRule);

@@ -65,7 +65,7 @@ namespace ParseXccdf
             }
             else
             {
-                dscResource = "Registry";
+                dscResource = "RegistryPolicyFile";
             }
 
             return dscResource;
@@ -113,6 +113,15 @@ namespace ParseXccdf
             }
             return string.Join("",newFixText);
 
+        }
+        public static RegistryVRule PopulateRegistryData(RegistryData Data, RegistryVRule RegVRule)
+        {
+            RegVRule.data.RegistryKey = Data.RegistryKey;
+            RegVRule.Data.RegistryType = Data.RegistryType;
+            RegVRule.Data.RegistryValueData = Data.RegistryValueData;
+            RegVRule.Data.RegistryValueName = Data.RegistryValueName;
+
+            return RegVRule;
         }
         public static void CopyProperties<T>(T source, T target)
         {
@@ -364,11 +373,6 @@ namespace ParseXccdf
 
             return rules;
         }
-        public static List<Rule> CreateRegFromMultiline()
-        {
-            return new List<Rule>();
-        }
-
         public static List<string> RegGetMultilineCheckContent(string CheckContent)
         {
 

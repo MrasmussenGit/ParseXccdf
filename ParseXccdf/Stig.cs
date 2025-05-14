@@ -1046,7 +1046,7 @@ namespace ParseXccdf
             root.SetAttribute("title", OutputStig.Title);
             root.SetAttribute("notice", OutputStig.Notice);
             root.SetAttribute("source", OutputStig.Source);
-            root.SetAttribute("fullversion", OutputStig.FullVersion);
+            root.SetAttribute("fullversion", OutputStig.StigVersion);
             root.SetAttribute("created", DateTime.Now.ToShortDateString());
             doc.AppendChild(root);
 
@@ -1121,7 +1121,6 @@ namespace ParseXccdf
                     if (existingNode != null)
                     {
                         regElement = (XmlElement)existingNode;
-                        //regElement.SetAttribute("dscresourcemodule", "PDDscResources");
                         root.AppendChild(regElement);
                     }
                     else
@@ -1134,7 +1133,7 @@ namespace ParseXccdf
                     XmlElement ruleElement = doc.CreateElement("Rule");
                     ruleElement.SetAttribute("id", rule.Rules[0].GroupId);
                     ruleElement.SetAttribute("severity", rule.Rules[0].Severity);
-                    ruleElement.SetAttribute("conversionstatus", "");
+                    ruleElement.SetAttribute("conversionstatus", "Pass");
                     ruleElement.SetAttribute("title", rule.Title);
                     regElement.AppendChild(ruleElement);
 
@@ -1154,15 +1153,6 @@ namespace ParseXccdf
                     ruleChild.InnerText = "False";
                     ruleElement.AppendChild(ruleChild);
 
-                    ruleChild = doc.CreateElement("Key");
-
-                    regVRule = new RegistryVRule();
-                    RegistryVRule.CopyProperties(rule.Rules[0], regVRule);
-                    //regVRule = RegistryVRule.Clone(rule.Rules[0]);
-                    //regVRule = (RegistryVRule)rule.Rules[0];
-                    ruleChild.InnerText = regVRule.Data.RegistryKey;
-                    ruleElement.AppendChild(ruleChild);
-
                     ruleChild = doc.CreateElement("LegacyId");
                     ruleElement.AppendChild(ruleChild);
 
@@ -1173,33 +1163,43 @@ namespace ParseXccdf
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("RawString");
+                    ruleChild.InnerText = rule.Rules[0].CheckContent;
+                    ruleElement.AppendChild(ruleChild);
+
+                    ruleChild = doc.CreateElement("Key");
+                    regVRule = new RegistryVRule();
+                    RegistryVRule.CopyProperties(rule.Rules[0], regVRule);
+                    RegistryVRule orignialRuleKey = (RegistryVRule) rule.Rules[0];
+                    regVRule = RegistryVRule.PopulateRegistryData(orignialRuleKey.Data, regVRule);
+                    ruleChild.InnerText = regVRule.Data.RegistryKey;
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("ValueData");
                     regVRule = new RegistryVRule();
                     RegistryVRule.CopyProperties(rule.Rules[0], regVRule);
-                   // regVRule = RegistryVRule.Clone(rule.Rules[0]);
-                    //regVRule = (RegistryVRule)rule.Rules[0];
+                    RegistryVRule orignialRuleValue = (RegistryVRule)rule.Rules[0];
+                    regVRule = RegistryVRule.PopulateRegistryData(orignialRuleValue.Data, regVRule);
                     ruleChild.InnerText = regVRule.Data.RegistryValueData;
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("ValueName");
                     regVRule = new RegistryVRule();
                     RegistryVRule.CopyProperties(rule.Rules[0], regVRule);
-                    //regVRule = RegistryVRule.Clone(rule.Rules[0]);
-                    //regVRule = (RegistryVRule)rule.Rules[0];
+                    RegistryVRule orignialRuleValueName = (RegistryVRule)rule.Rules[0];
+                    regVRule = RegistryVRule.PopulateRegistryData(orignialRuleValueName.Data, regVRule);
                     ruleChild.InnerText = regVRule.Data.RegistryValueName;
                     ruleElement.AppendChild(ruleChild);
 
                     ruleChild = doc.CreateElement("ValueType");
                     RegistryVRule.CopyProperties(rule.Rules[0], regVRule);
-                    //regVRule = RegistryVRule.Clone(rule.Rules[0]);
                     regVRule = new RegistryVRule();
                     RegistryVRule.CopyProperties(rule.Rules[0], regVRule);
+                    RegistryVRule orignialRuleValueType = (RegistryVRule)rule.Rules[0];
+                    regVRule = RegistryVRule.PopulateRegistryData(orignialRuleValueType.Data, regVRule);
                     ruleChild.InnerText = regVRule.Data.RegistryType;
                     ruleElement.AppendChild(ruleChild);
-
-                    ruleElement.SetAttribute("dscresource", regVRule.GetDscResource(regVRule.FixText));
+                    string dscResource = regVRule.GetDscResource(regVRule.FixText);
+                    ruleElement.SetAttribute("dscresource", dscResource);
                 }
                 else if (rule.Rules[0].DscResource == "Registry")
                 {
