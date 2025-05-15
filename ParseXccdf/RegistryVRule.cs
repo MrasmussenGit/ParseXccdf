@@ -163,33 +163,6 @@ namespace ParseXccdf
             newVRule.RuleType = Rule.RuleType;
             return newVRule;
         }
-        public bool PopulateMultilineRegistryData(string CheckContent)
-        {
-            bool successful = false;
-            // would contain multiline 
-
-
-            this.Data.RegistryKey = "";
-            this.Data.RegistryKey = "";
-            this.Data.RegistryKey = "";
-            this.Data.RegistryKey = "";
-            this.Data.RegistryKey = "";
-
-            return successful;
-        }
-        public RegistryData PopulateSingleLineRegistryData(string CheckContent)
-        {
-            bool successful = false;
-            // would contain multiline 
-            RegistryData data = new RegistryData();
-            data.RegistryKey = "";
-            data.RegistryValueData = "";
-            data.RegistryValueName = "";
-            data.RegistryType = "";
-            data.RegistryName = "";
-
-            return data;
-        }
         public static bool IsMultilineRegEntry(string CheckContent)
         {
 

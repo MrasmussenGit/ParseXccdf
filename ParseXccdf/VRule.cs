@@ -3,6 +3,7 @@ using System.CodeDom;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Permissions;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -269,15 +270,19 @@ namespace ParseXccdf
             return type;
             //return ruleType;
         }
-        public static string GetRuleType(string CheckContent)
+        public static string[] GetRuleType(string CheckContent)
         {
+            // return element 0 = RuleType
+            // return element 1 = DscResource
             List<VRule> rules = new List<VRule>();
             string type = "";
+            string DscResource = "";
             // original code has trim extra lines from content
 
             if (IsRegistryRule(CheckContent))
             {
                 type = "RegistryPolicyFile";
+                DscResource = "RegistryPolicyFile";
             }
             else if (IsHardCodedRule(CheckContent))
             {
@@ -328,15 +333,23 @@ namespace ParseXccdf
             {
 
             }
+            else if(IsRootCertificateRule(CheckContent))
+            {
+                type = "RootCertificateRule";
+                DscResource = "CertificateDSC";
+            }
             else
             {
                 type = "ManualRule";
+                DscResource = "None";
             }
             if(type == null || type.Length == 0)
             {
                 type = "ManualRule";
+                DscResource = "None";
             }
-            return type;
+            string[] returnArray = { type, DscResource };
+            return returnArray;
         }
         public static List<VRule> GetSpecificRule(VRule VRule)
         {
@@ -402,6 +415,14 @@ namespace ParseXccdf
             {
 
             }
+            else if(IsRootCertificateRule(VRule.CheckContent))
+            {
+                List<RootCertificateVRule> rulesToAdd = ConvertToRootCertRule(VRule);
+                foreach (RootCertificateVRule r in rulesToAdd)
+                {
+                    rules.Add(r);
+                }
+            }
             else
             {
                 // manual rule
@@ -417,17 +438,20 @@ namespace ParseXccdf
             switch(Rule.RuleType)
             {
                 case "RegistryPolicyFile":
+                    string groupIdPattern = "V-253426*";
+                    if(Utilities.WildcardMatch(Rule.GroupId, groupIdPattern) || Rule.GroupId.ToLower() == "v-253426")
+                    {
+                        string temp = "";
+                    }
                     RegistryVRule newRegRule = new RegistryVRule();
                     RegistryVRule.CopyProperties(Rule, newRegRule);
                     newRegRule = RegistryVRule.PopulateRegistryVRule(newRegRule);
                     return newRegRule;
-
-                    break;
                 case "HardCodedRule":
                     break;
+                case "ManualRule":
+                    break;
             }
-
-
             return Rule;
         }
         public static RegistryVRule PopulateRegistryVRule(RegistryVRule Rule)
@@ -440,12 +464,22 @@ namespace ParseXccdf
 
             return Rule;
         }
+        public static void CopyProperties<T>(T source, T target)
+        {
+            foreach (PropertyInfo prop in typeof(T).GetProperties())
+            {
+                if (prop.CanRead && prop.CanWrite)
+                {
+                    prop.SetValue(target, prop.GetValue(source));
+                }
+            }
+        }
 
         #region ConvertToTypes
         private static List<RegistryVRule> ConvertToRegRule(VRule Rule)
         {
             RegistryVRule regVRule = new RegistryVRule(); 
-            RegistryVRule.CopyProperties(Rule, regVRule);
+            CopyProperties(Rule, regVRule);
             regVRule.IsAFinding = VRule.GetIsAFindingString(Rule.CheckContent);
             regVRule.IsNotAFinding = VRule.GetIsNotAFindingString(Rule.CheckContent);
 
@@ -495,6 +529,15 @@ namespace ParseXccdf
 
             List<RegistryVRule> rules = new List<RegistryVRule>();
             rules.Add(regVRule);
+
+            return rules;
+        }
+        private static List<RootCertificateVRule> ConvertToRootCertRule(VRule Rule)
+        {
+            RootCertificateVRule rootCertRule = new RootCertificateVRule();
+            CopyProperties(Rule, rootCertRule);
+            rootCertRule.ThumbPrint = "";
+            List<RootCertificateVRule> rules = new List<RootCertificateVRule> { rootCertRule };
 
             return rules;
         }
@@ -622,6 +665,12 @@ namespace ParseXccdf
                 isMatch = true;
             }
             return isMatch;
+        }
+        private static bool IsRootCertificateRule(string CheckContent)
+        {
+            string pattern = "CN=DoD";
+
+            return (Regex.IsMatch(CheckContent, pattern));
         }
         #endregion
 

@@ -50,8 +50,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RegistryData.cs" />
     <Compile Include="RegistryVRule.cs" />
+    <Compile Include="RootCertificateVRule.cs" />
     <Compile Include="Rule.cs" />
     <Compile Include="Stig.cs" />
+    <Compile Include="Utilities.cs" />
     <Compile Include="VRule.cs" />
   </ItemGroup>
   <ItemGroup>
