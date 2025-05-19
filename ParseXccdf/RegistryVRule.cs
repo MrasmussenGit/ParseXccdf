@@ -123,16 +123,6 @@ namespace ParseXccdf
 
             return RegVRule;
         }
-        public static void CopyProperties<T>(T source, T target)
-        {
-            foreach (PropertyInfo prop in typeof(T).GetProperties())
-            {
-                if (prop.CanRead && prop.CanWrite)
-                {
-                    prop.SetValue(target, prop.GetValue(source));
-                }
-            }
-        }
         public static RegistryVRule Clone(VRule Rule)
         {
             RegistryVRule newVRule = new RegistryVRule();
@@ -354,6 +344,73 @@ namespace ParseXccdf
 
 
             return new List<string> { CheckContent };
+        }
+        public static RegistryVRule PopulateRegistryVRule(RegistryVRule Rule)
+        {
+
+            Rule.Data.RegistryKey = GetRegKeyFromContent(Rule.CheckContent);
+            Rule.Data.RegistryValueName = GetRegValueName(Rule.CheckContent);
+            Rule.Data.RegistryType = GetRegValueDataType(Rule.CheckContent);
+            Rule.Data.RegistryValueData = GetRegValueData(Rule.CheckContent);
+
+            return Rule;
+        }
+        public static string GetRegValueDataType(string CheckContent)
+        {
+            string valueDataType = "";
+            string pattern = @"Type.*:\s.*REG_(SZ|BINARY|DWORD|QWORD|MULTI_SZ|EXPAND_SZ)";
+
+            Regex.IsMatch(CheckContent, @"Type.*:\s.*REG_(SZ|BINARY|DWORD|QWORD|MULTI_SZ|EXPAND_SZ)");
+            Regex regex = new Regex(pattern);
+            Match match = regex.Match(CheckContent);
+            if (match.Success)
+            {
+                valueDataType = match.Value;
+            }
+
+            return valueDataType;
+        }
+        public static string GetRegValueData(string CheckContent)
+        {
+            string valueData = "";
+            string pattern = @"Value:\s.*";
+            Match match = Regex.Match(CheckContent, pattern);
+            if (match.Success)
+            {
+                valueData = match.Value.Split(':')[1];
+                valueData = valueData.Trim('\r', '\n', ' ');
+            }
+
+            return valueData;
+        }
+        public static string GetRegValueName(string CheckContent)
+        {
+            string valueName = "";
+            string trimmedValueName = "";
+            string pattern = @"Value\sName:.*";
+            Match match = Regex.Match(CheckContent, pattern);
+            if (match.Success)
+            {
+                valueName = match.Value.Split(':')[1];
+                valueName = valueName.Trim('\r', '\n', ' ');
+            }
+
+            return valueName;
+        }
+        public static string GetRegKeyFromContent(string CheckContent)
+        {
+            string regKey = "";
+            if (Regex.IsMatch(CheckContent, @"HKEY_LOCAL_MACHINE\\Software\\McAfee\\\s\(32-bit\)|HKLM\\Software\\Wow6432Node\\McAfee\\\s\(64-bit\)"))
+            {
+                regKey = GetMcAfeeRegistryPath(CheckContent);
+            }
+            else
+            {
+                string pattern = @"(HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER|HKEY_CLASSES_ROOT|HKEY_USERS|HKEY_PERFORMANCE_DATA|HKEY_CURRENT_CONFIG).*";
+                Match match = Regex.Match(CheckContent, pattern);
+                regKey = match.Value;
+            }
+            return regKey.Trim('\r', '\n');
         }
     }
 }

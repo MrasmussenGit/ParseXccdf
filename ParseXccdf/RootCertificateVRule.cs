@@ -35,5 +35,14 @@ namespace ParseXccdf
             }
             return isMultiline;
         }
+
+        public static RootCertificateVRule PopulateRootCertificateVRule(RootCertificateVRule RootCertificateVRule)
+        {
+            // arg has the CheckContent that contains the additional data for this rule type
+
+            
+
+            return RootCertificateVRule;
+        }
     }
 }

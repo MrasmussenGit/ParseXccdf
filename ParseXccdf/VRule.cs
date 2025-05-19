@@ -444,9 +444,14 @@ namespace ParseXccdf
                         string temp = "";
                     }
                     RegistryVRule newRegRule = new RegistryVRule();
-                    RegistryVRule.CopyProperties(Rule, newRegRule);
+                    Utilities.CopyProperties(Rule, newRegRule);
                     newRegRule = RegistryVRule.PopulateRegistryVRule(newRegRule);
                     return newRegRule;
+                case "RootCertificateRule":
+                    RootCertificateVRule rootCertRule = new RootCertificateVRule();
+                    Utilities.CopyProperties(Rule, rootCertRule);
+                    rootCertRule = RootCertificateVRule.PopulateRootCertificateVRule(rootCertRule);
+                    break;
                 case "HardCodedRule":
                     break;
                 case "ManualRule":
@@ -454,78 +459,23 @@ namespace ParseXccdf
             }
             return Rule;
         }
-        public static RegistryVRule PopulateRegistryVRule(RegistryVRule Rule)
-        {
-
-            Rule.Data.RegistryKey = RegistryVRule.GetRegKeyFromContent(Rule.CheckContent);
-            Rule.Data.RegistryValueName = RegistryVRule.GetRegValueName(Rule.CheckContent);
-            Rule.Data.RegistryType = RegistryVRule.GetRegValueDataType(Rule.CheckContent);
-            Rule.Data.RegistryValueData = RegistryVRule.GetRegValueData(Rule.CheckContent);
-
-            return Rule;
-        }
-        public static void CopyProperties<T>(T source, T target)
-        {
-            foreach (PropertyInfo prop in typeof(T).GetProperties())
-            {
-                if (prop.CanRead && prop.CanWrite)
-                {
-                    prop.SetValue(target, prop.GetValue(source));
-                }
-            }
-        }
 
         #region ConvertToTypes
         private static List<RegistryVRule> ConvertToRegRule(VRule Rule)
         {
             RegistryVRule regVRule = new RegistryVRule(); 
-            CopyProperties(Rule, regVRule);
+            Utilities.CopyProperties(Rule, regVRule);
             regVRule.IsAFinding = VRule.GetIsAFindingString(Rule.CheckContent);
             regVRule.IsNotAFinding = VRule.GetIsNotAFindingString(Rule.CheckContent);
 
-            // test if value is multiline?
-            
-        //    if(regVRule.IsMultilineRegEntry(Rule.CheckContent))
-        //    {
-                string temp = "";
-                // check content contains multiple reg keys and values?  populate data list in regVRule
-                // create multiple rules, one for each reg entry
 
-       //     }
-       //     else
-       //     {
-                regVRule.Data.RegistryKey = RegistryVRule.GetRegKeyFromContent(regVRule.CheckContent);
-                regVRule.Data.RegistryValueName = RegistryVRule.GetRegValueName(regVRule.CheckContent);
-                regVRule.Data.RegistryType = RegistryVRule.GetRegValueDataType(regVRule.CheckContent);
-                regVRule.Data.RegistryValueData = RegistryVRule.GetRegValueData(regVRule.CheckContent);
-      //      }
-
-            // items reg data is checked and adjusted for
-            //  isBlank
-            //  isEnabledOrDisabled
-            //  isHexCode
-            //  isInteger
-            //  this.ValueType = 'MultiString'
-            //
-            //  if ($regData match "see below") -> GetMultiValueRegistryStringData($this.RawString)
-            //  else -> FormatMultiStringRegistryData($registryValueData)
-
-
-
-            // needs works
-            //regVRule.FixText = RegistryVRule.TrimRegFixText(Rule.FixText);
+            regVRule.Data.RegistryKey = RegistryVRule.GetRegKeyFromContent(regVRule.CheckContent);
+            regVRule.Data.RegistryValueName = RegistryVRule.GetRegValueName(regVRule.CheckContent);
+            regVRule.Data.RegistryType = RegistryVRule.GetRegValueDataType(regVRule.CheckContent);
+            regVRule.Data.RegistryValueData = RegistryVRule.GetRegValueData(regVRule.CheckContent);
             regVRule.FixText = Rule.FixText;
             regVRule.trimmedFixText = RegistryVRule.TrimRegistryFixText(Rule.FixText);
-
-
             regVRule.DscResource = GetDscResourceValue(regVRule.FixText, regVRule.Data.RegistryKey, regVRule.Data.RegistryValueName);
-
-
-
-            //regVRule.ValueData = GetRegValueData(regVRule.CheckContent);
-       // $this.SetValueType($rawString)
-       // $this.SetDuplicateRule()
-       // $this.SetDscResource($fixText)
 
             List<RegistryVRule> rules = new List<RegistryVRule>();
             rules.Add(regVRule);
@@ -535,7 +485,7 @@ namespace ParseXccdf
         private static List<RootCertificateVRule> ConvertToRootCertRule(VRule Rule)
         {
             RootCertificateVRule rootCertRule = new RootCertificateVRule();
-            CopyProperties(Rule, rootCertRule);
+            Utilities.CopyProperties(Rule, rootCertRule);
             rootCertRule.ThumbPrint = "";
             List<RootCertificateVRule> rules = new List<RootCertificateVRule> { rootCertRule };
 
@@ -669,6 +619,11 @@ namespace ParseXccdf
         private static bool IsRootCertificateRule(string CheckContent)
         {
             string pattern = "CN=DoD";
+            bool isMatch = Regex.IsMatch(CheckContent, pattern);
+            if(isMatch)
+            {
+                string temp = "";
+            }
 
             return (Regex.IsMatch(CheckContent, pattern));
         }
@@ -692,125 +647,6 @@ namespace ParseXccdf
             }
 
             return dscResource;
-        }
-        private static string GetRegValueDataType(string CheckContent)
-        {
-            string valueDataType = "";
-            string pattern = @"Type.*:\s.*REG_(SZ|BINARY|DWORD|QWORD|MULTI_SZ|EXPAND_SZ)";
-
-            Regex.IsMatch(CheckContent, @"Type.*:\s.*REG_(SZ|BINARY|DWORD|QWORD|MULTI_SZ|EXPAND_SZ)");
-            Regex regex = new Regex(pattern);
-            Match match = regex.Match(CheckContent);
-            if (match.Success)
-            {
-                valueDataType = match.Value;
-            }
-
-            return valueDataType;
-        }
-        private static string GetRegValueData(string CheckContent)
-        {
-            string valueData = "";
-            string pattern = @"Value:\s.*";
-            Match match = Regex.Match(CheckContent, pattern);
-            if (match.Success)
-            {
-                valueData = match.Value.Split(':')[1];
-                valueData = valueData.Trim('\r', '\n', ' ');
-            }
-
-            /* - original code has these checks after getting the reg value data ***************************************************************
-             * 
-                 # If a range is found on the value line, it needs further processing.
-        if (($this.TestValueDataStringForRange($registryValueData)) -or ($this.RawString -match "LegalNoticeText"))
-        {
-            # Set the OrganizationValueRequired flag to true so that a org level setting will be required.
-            $this.SetOrganizationValueRequired()
-
-            # Try to extract a test string from the range text.
-            $OrganizationValueTestString = $this.GetOrganizationValueTestString($registryValueData)
-
-            if ($this.RawString -match "LegalNoticeText")
-            {
-                $LegalNoticeTextOrganizationValueTestString = '{0} is set to the required legal notice before logon'
-                $this.set_OrganizationValueTestString($LegalNoticeTextOrganizationValueTestString)
-            }
-
-            # If a test string was returned, add it.
-            if ($null -ne $OrganizationValueTestString)
-            {
-                $this.set_OrganizationValueTestString($OrganizationValueTestString)
-            }
-        }
-        else
-        {
-            if ($this.IsDataBlank($registryValueData))
-            {
-                $this.SetIsNullOrEmpty()
-                $registryValueData = ''
-            }
-            elseif ($this.IsDataEnabledOrDisabled($registryValueData))
-            {
-                $registryValueData = $this.GetValidEnabledOrDisabled(
-                    $this.ValueType, $registryValueData
-                )
-            }
-            elseif ($this.IsDataHexCode($registryValueData))
-            {
-                $registryValueData = $this.GetIntegerFromHex($registryValueData)
-            }
-            elseif ($this.IsDataInteger($registryValueData))
-            {
-                $registryValueData = $this.GetNumberFromString($registryValueData)
-            }
-            elseif ($this.ValueType -eq 'MultiString')
-            {
-                if ($registryValueData -match "see below")
-                {
-                    $registryValueData = $this.GetMultiValueRegistryStringData($this.RawString)
-                }
-                else
-                {
-                    $registryValueData = $this.FormatMultiStringRegistryData($registryValueData)
-                }
-            }
-            $this.Set_ValueData($registryValueData)
-             * */
-
-            return valueData;
-        }
-        private static string GetRegValueName(string CheckContent)
-        {
-            string valueName = "";
-            string trimmedValueName = "";
-            string pattern = @"Value\sName:.*";
-            Match match = Regex.Match(CheckContent, pattern);
-            if (match.Success)
-            {
-                valueName = match.Value.Split(':')[1];
-                valueName = valueName.Trim('\r', '\n', ' ');
-            }
-
-            return valueName;
-        }
-        private static string GetMcAfeeRegistryPath(string CheckContent)
-        {
-            return "";
-        }
-        private static string GetRegKeyFromContent(string CheckContent)
-        {
-            string regKey = "";
-            if (Regex.IsMatch(CheckContent, @"HKEY_LOCAL_MACHINE\\Software\\McAfee\\\s\(32-bit\)|HKLM\\Software\\Wow6432Node\\McAfee\\\s\(64-bit\)"))
-            {
-                regKey = GetMcAfeeRegistryPath(CheckContent);
-            }
-            else
-            {
-                string pattern = @"(HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER|HKEY_CLASSES_ROOT|HKEY_USERS|HKEY_PERFORMANCE_DATA|HKEY_CURRENT_CONFIG).*";
-                Match match = Regex.Match(CheckContent, pattern);
-                regKey = match.Value;
-            }
-                return regKey.Trim('\r','\n');
         }
         public static string TrimPostProcessRuleId(string RuleId)
         {

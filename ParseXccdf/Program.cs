@@ -595,6 +595,7 @@ namespace ParseXccdf
                 --listRulesFilePath "C:\git\PowerStig\source\StigData\Archive\Linux.RHEL\U_RHEL_9_STIG_V2R3_Manual-xccdf.xml"
             # converts a DISA stig to a DSC compatible XML document (work in progress)
                 --ConvertDisaStigFilePath "C:\git\PowerStig\source\StigData\Archive\Adobe\U_Adobe_Acrobat_Pro_DC_Continuous_V2R1_Manual-xccdf.xml" --OutputFilePath "c:\test"
+                --ConvertDisaStigFilePath "C:\git\PowerStig\source\StigData\Archive\Windows.Client\U_MS_Windows_11_STIG_V2R2_Manual-xccdf.xml"
              */
             var argDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             string preprocessedFolderPath = String.Empty;

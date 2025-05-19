@@ -615,13 +615,10 @@ namespace ParseXccdf
                     case "HardcodedRule":
                         isMultiline = ManualVRule.IsMultiline(checkContent);
                         break;
+                    case "RootCertificateRule":
+                        isMultiline = RootCertificateVRule.IsMutliCertContent(checkContent);
+                        break;
                 }
-
-                foreach (string content in splitCheckContent)
-                {
-
-                }
-
 
                 Rule rule = new Rule();
                 rule.FilePath = FilePath;
@@ -1014,6 +1011,10 @@ namespace ParseXccdf
                                         {
                                             vRule = VRule.PopulateAdditionalData(vRule);
                                         }
+                                        else if (ruleTypeData[0] == "RootCertificateRule")
+                                        {
+                                            
+                                        }
                                         
                                     }
                                     else if (checkChildNode.Name.ToLower() == "check-content-ref")
@@ -1173,7 +1174,7 @@ namespace ParseXccdf
 
                     ruleChild = doc.CreateElement("Key");
                     regVRule = new RegistryVRule();
-                    VRule.CopyProperties(rule.Rules[0], regVRule);
+                    Utilities.CopyProperties(rule.Rules[0], regVRule);
                     RegistryVRule orignialRuleKey = (RegistryVRule) rule.Rules[0];
                     regVRule = RegistryVRule.PopulateRegistryData(orignialRuleKey.Data, regVRule);
                     ruleChild.InnerText = regVRule.Data.RegistryKey;
@@ -1181,7 +1182,7 @@ namespace ParseXccdf
 
                     ruleChild = doc.CreateElement("ValueData");
                     regVRule = new RegistryVRule();
-                    VRule.CopyProperties(rule.Rules[0], regVRule);
+                    Utilities.CopyProperties(rule.Rules[0], regVRule);
                     RegistryVRule orignialRuleValue = (RegistryVRule)rule.Rules[0];
                     regVRule = RegistryVRule.PopulateRegistryData(orignialRuleValue.Data, regVRule);
                     ruleChild.InnerText = regVRule.Data.RegistryValueData;
@@ -1189,7 +1190,7 @@ namespace ParseXccdf
 
                     ruleChild = doc.CreateElement("ValueName");
                     regVRule = new RegistryVRule();
-                    VRule.CopyProperties(rule.Rules[0], regVRule);
+                    Utilities.CopyProperties(rule.Rules[0], regVRule);
                     RegistryVRule orignialRuleValueName = (RegistryVRule)rule.Rules[0];
                     regVRule = RegistryVRule.PopulateRegistryData(orignialRuleValueName.Data, regVRule);
                     ruleChild.InnerText = regVRule.Data.RegistryValueName;
@@ -1197,7 +1198,7 @@ namespace ParseXccdf
 
                     ruleChild = doc.CreateElement("ValueType");
                     regVRule = new RegistryVRule();
-                    VRule.CopyProperties(rule.Rules[0], regVRule);
+                    Utilities.CopyProperties(rule.Rules[0], regVRule);
                     
                     RegistryVRule orignialRuleValueType = (RegistryVRule)rule.Rules[0];
                     regVRule = RegistryVRule.PopulateRegistryData(orignialRuleValueType.Data, regVRule);
