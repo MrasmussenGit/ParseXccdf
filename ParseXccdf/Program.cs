@@ -165,7 +165,15 @@ namespace ParseXccdf
             stig.FilePath = FilePath;
             stig.OriginalFile = FilePath;
             //stig.Rules = PopulatePreProcessedRules(FilePath);
-            stig.Rules = Stig.PopulatePreProcessedRules(FilePath);
+            stig.FullCheckContentRules = Stig.PopulatePreProcessedRules(FilePath);
+
+            // check if each rule is multiline
+            // if so, create as many of the same rule
+            // only changing checkContent
+
+
+
+
             stig.Product = GetPreProcessedProduct(FilePath, ref stig);
             // could move this to the GetPreProcessedProduct function
             if (stig.IsOfficeProduct) 
@@ -593,9 +601,11 @@ namespace ParseXccdf
                 --preprocessedFolderPath "C:\git\PowerStig\source\StigData\Archive" --PostProcessedFolderPath "C:\git\PowerStig\source\StigData\Processed"
             # list rule IDs of a single STIG file
                 --listRulesFilePath "C:\git\PowerStig\source\StigData\Archive\Linux.RHEL\U_RHEL_9_STIG_V2R3_Manual-xccdf.xml"
+                --listRulesFilePath "C:\git\PowerStig\source\StigData\Archive\Linux.Ubuntu\U_CAN_Ubuntu_18-04_LTS_STIG_V2R14_Manual-xccdf.xml"
             # converts a DISA stig to a DSC compatible XML document (work in progress)
                 --ConvertDisaStigFilePath "C:\git\PowerStig\source\StigData\Archive\Adobe\U_Adobe_Acrobat_Pro_DC_Continuous_V2R1_Manual-xccdf.xml" --OutputFilePath "c:\test"
                 --ConvertDisaStigFilePath "C:\git\PowerStig\source\StigData\Archive\Windows.Client\U_MS_Windows_11_STIG_V2R2_Manual-xccdf.xml"
+                --ConvertDisaStigFilePath "C:\git\PowerStig\source\StigData\Archive\Linux.Ubuntu\U_CAN_Ubuntu_18-04_LTS_STIG_V2R14_Manual-xccdf.xml"
              */
             var argDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             string preprocessedFolderPath = String.Empty;
@@ -629,14 +639,17 @@ namespace ParseXccdf
                 {
                     Console.WriteLine($"{rule}");
                 }
+                Console.WriteLine($"Total rules in STIG: {ruleList.Count}");
             }
             else if(argDictionary.TryGetValue("--ConvertDisaStigFilePath", out string stigToConvertArg))
             {
                 Console.WriteLine($"Converting {stigToConvertArg}");
                 argDictionary.TryGetValue("--OutputFilePath", out string outputFilePath);
                 Stig stig = GetSingleStig(stigToConvertArg);
+                // stig at this point has checkContent unformatted, just the raw checkContent from the xccdf file.
+                // value of having the stig at this point is it should be the fully parsed xccdf data into this single object
                 Stig.OutputStigToDisk(outputFilePath, ref stig);
-                Console.WriteLine($"Conversion completed");
+                Console.WriteLine("Conversion completed");
             }
             else
             {

@@ -36,13 +36,27 @@ namespace ParseXccdf
             return isMultiline;
         }
 
+        public static List<string> SplitRootCertificateRuleContent(string CheckContent)
+        {
+            List<string> splits = new List<string>();
+
+            return splits;
+        }
+
         public static RootCertificateVRule PopulateRootCertificateVRule(RootCertificateVRule RootCertificateVRule)
         {
             // arg has the CheckContent that contains the additional data for this rule type
-
+            RootCertificateVRule.ThumbPrint = GetThumbprint(RootCertificateVRule.CheckContent);
             
 
             return RootCertificateVRule;
+        }
+
+        public static string GetThumbprint(string CheckContent)
+        {
+            string thumbprint = "";
+
+            return thumbprint;
         }
     }
 }

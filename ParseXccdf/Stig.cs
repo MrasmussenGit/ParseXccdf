@@ -17,6 +17,7 @@ namespace ParseXccdf
     internal class Stig
     {
         private List<Rule> rules;
+        private List<Rule> fullCheckContentRules;
         private List<PostProcessedVRule> postProcessRules;
         private List<string> changeLog;
         private string title;
@@ -41,8 +42,14 @@ namespace ParseXccdf
         public Stig() 
         {
             this.rules = new List<Rule>();
+            this.fullCheckContentRules = new List<Rule>();
             this.postProcessRules = new List<PostProcessedVRule>();
             this.changeLog = new List<string>();
+        }
+        public List<Rule> FullCheckContentRules
+        {
+            get { return this.fullCheckContentRules; }
+            set { this.fullCheckContentRules = value; }
         }
 
         public string Classification
@@ -525,419 +532,9 @@ namespace ParseXccdf
                 }
             }
         }
-        public static List<VRule> GetMultiLineRule(XmlNode RuleXml)
-        {
-            List<VRule> rules = new List<VRule>();
-
-
-
-            return rules;
-        }
-        public static VRule GetSingleLineRule(XmlNode RuleXml)
-        {
-            VRule vRule = null;
-
-
-
-            return vRule;
-        }
-
-        public static List<Rule> PopulateRule(XmlNode RuleXml)
-        {
-            List<Rule> ruleList = new List<Rule>();
-            string type = VRule.GetRuleType(RuleXml);
-            string checkContent = "";
-            if (type == "RegistryRule")
-            {
-                if(RegistryVRule.IsMultilineRegEntry(checkContent))
-                {
-                    //ruleList = 
-                }
-                else
-                {
-
-                }
-            }
-            else if (type == "ManualRule")
-            {
-
-            }
-            else if (type == "HardCodedRule")
-            {
-
-            }
-
-
-
-
-                foreach (XmlNode child in RuleXml.ChildNodes)
-                {
-                }
-
-                // get rule type
-                // call isMultiLine method
-                // process rule/s
-
-
-                return ruleList;
-        }
-        public static List<Rule> PopulatePreProcessedRulesSingleCheckContent(string FilePath)
-        {
-            // get log file to process manual changes
-            List<Rule> myList = new List<Rule>();
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.Load(FilePath);
-            XmlNodeList groupRules = xmlDoc.GetElementsByTagName("Group");
-
-            // get checkContent
-            // if multiline
-            // get multiple lines of checkContent
-            // foreach checkContent, create a new RULE object
-            // only diff is the check content, so all other properties are the same
-
-
-            foreach (XmlNode node in groupRules)
-            {
-                List<string> splitCheckContent = new List<string>();
-                string checkContent = VRule.GetCheckContent(node);
-                string ruleType = VRule.GetRuleType(node);
-                bool isMultiline = false;
-                switch (ruleType)
-                {
-                    case "RegistryRule":
-                        isMultiline = RegistryVRule.IsMultilineRegEntry((checkContent));
-                        if (isMultiline) { splitCheckContent = RegistryVRule.RegGetMultilineCheckContent(checkContent); }
-                        else { splitCheckContent.Add(checkContent); }
-                        break;
-                    case "ManualRule":
-                        isMultiline = ManualVRule.IsMultiline(checkContent);
-                        break;
-                    case "HardcodedRule":
-                        isMultiline = ManualVRule.IsMultiline(checkContent);
-                        break;
-                    case "RootCertificateRule":
-                        isMultiline = RootCertificateVRule.IsMutliCertContent(checkContent);
-                        break;
-                }
-
-                Rule rule = new Rule();
-                rule.FilePath = FilePath;
-                foreach (XmlNode child in node.ChildNodes)
-                {
-                    VRule vRule = new VRule();
-                    if (child.Name.ToLower() == "title")
-                    {
-
-                        rule.Title = child.InnerText;
-                    }
-                    else if (child.Name.ToLower() == "description")
-                    {
-                        rule.Description = child.InnerText;
-                    }
-                    else if (child.Name.ToLower() == "rule")
-                    {
-                        //vRule.RuleId = node.Attributes["id"].Value;
-                        //var newRule = new VRule();
-
-                        List<VRule> newRules = new List<VRule>();
-                        vRule.Severity = child.Attributes["severity"].Value;
-                        vRule.GroupId = node.Attributes["id"].InnerText;
-                        foreach (XmlNode ruleChildNode in child.ChildNodes)
-                        {
-
-                            if (ruleChildNode.Name.ToLower() == "title")
-                            {
-                                vRule.RuleTitle = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "description")
-                            {
-                                vRule.RuleDescription = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "ensure")
-                            {
-                                vRule.Ensure = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "version")
-                            {
-                                vRule.Version = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "ident")
-                            {
-                                vRule.Identifiers.Add(ruleChildNode.InnerText);
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "fixtext")
-                            {
-                                vRule.FixText = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "fix")
-                            {
-                                vRule.FixId = ruleChildNode.Attributes["id"].InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "check")
-                            {
-                                vRule.CheckSystem = ruleChildNode.Attributes["system"].Value;
-                                foreach (XmlNode checkChildNode in ruleChildNode.ChildNodes)
-                                {
-                                    if (checkChildNode.Name.ToLower() == "check-content")
-                                    {
-                                        vRule.CheckContent = checkChildNode.InnerText;
-
-                                        // get isAfinding and isNotAFinding
-                                        vRule.IsAFinding = VRule.GetIsAFindingString(vRule.CheckContent);
-                                        vRule.IsNotAFinding = VRule.GetIsNotAFindingString(vRule.CheckContent);
-
-                                        // determine rule type
-                                        // based on type, properties populated will be different
-                                        newRules = VRule.GetSpecificRule(vRule);
-                                        // maybe VRule static method to populate data based on rule type
-                                    }
-                                    else if (checkChildNode.Name.ToLower() == "check-content-ref")
-                                    {
-                                        vRule.CheckContentRefHref = checkChildNode.Attributes["href"].InnerText;
-                                    }
-                                    foreach (VRule r in newRules)
-                                    {
-                                        rule.Rules.Add(r);
-                                    }
-
-                                }
-
-                            }
-                            else
-                            {
-                                string temp = ruleChildNode.InnerText;
-                            }
-                        }
-                        //if(newRule.Ensure == null || newRule.Ensure.Length == 0)
-                        // {
-                        //     newRule.Ensure = "Present";
-                        // }
-                        foreach (VRule r in newRules)
-                        {
-                            rule.Rules.Add(r);
-                        }
-
-                    }
-                }
-                //i++;
-                //newRules.Add(rule);
-            }
-
-
-
-            if (RegistryVRule.IsMultilineRegEntryFileCheck(FilePath))
-            {
-                List<Rule> rules = new List<Rule>();
-                XmlDocument xmlDoc1 = new XmlDocument();
-                xmlDoc.Load(FilePath);
-                XmlNodeList groupRules1 = xmlDoc1.GetElementsByTagName("Group");
-                foreach (XmlNode node in groupRules1)
-                {
-                    Rule rule = new Rule();
-                    List<Rule> multiList = new List<Rule>();
-                    rule.FilePath = FilePath;
-                    foreach (XmlNode child in node.ChildNodes)
-                    {
-                        VRule vRule = new VRule();
-                        if (child.Name.ToLower() == "title")
-                        {
-                            rule.Title = child.InnerText;
-                        }
-                        else if (child.Name.ToLower() == "description")
-                        {
-                            rule.Description = child.InnerText;
-                        }
-                        else if (child.Name.ToLower() == "rule")
-                        {
-                            List<VRule> newRules = new List<VRule>();
-                            vRule.Severity = child.Attributes["severity"].Value;
-                            vRule.GroupId = node.Attributes["id"].InnerText;
-                            foreach (XmlNode ruleChildNode in child.ChildNodes)
-                            {
-                                if (ruleChildNode.Name.ToLower() == "title")
-                                {
-                                    vRule.RuleTitle = ruleChildNode.InnerText;
-                                }
-                                else if (ruleChildNode.Name.ToLower() == "description")
-                                {
-                                    vRule.RuleDescription = ruleChildNode.InnerText;
-                                }
-                                else if (ruleChildNode.Name.ToLower() == "ensure")
-                                {
-                                    vRule.Ensure = ruleChildNode.InnerText;
-                                }
-                                else if (ruleChildNode.Name.ToLower() == "version")
-                                {
-                                    vRule.Version = ruleChildNode.InnerText;
-                                }
-                                else if (ruleChildNode.Name.ToLower() == "ident")
-                                {
-                                    vRule.Identifiers.Add(ruleChildNode.InnerText);
-                                }
-                                else if (ruleChildNode.Name.ToLower() == "fixtext")
-                                {
-                                    vRule.FixText = ruleChildNode.InnerText;
-                                }
-                                else if (ruleChildNode.Name.ToLower() == "fix")
-                                {
-                                    vRule.FixId = ruleChildNode.Attributes["id"].InnerText;
-                                }
-                                else if (ruleChildNode.Name.ToLower() == "check")
-                                {
-                                    vRule.CheckSystem = ruleChildNode.Attributes["system"].Value;
-                                    foreach (XmlNode checkChildNode in ruleChildNode.ChildNodes)
-                                    {
-                                        if (checkChildNode.Name.ToLower() == "check-content")
-                                        {
-                                            vRule.CheckContent = checkChildNode.InnerText;
-
-                                            // get isAfinding and isNotAFinding
-                                            vRule.IsAFinding = VRule.GetIsAFindingString(vRule.CheckContent);
-                                            vRule.IsNotAFinding = VRule.GetIsNotAFindingString(vRule.CheckContent);
-
-                                            // determine rule type
-                                            // based on type, properties populated will be different
-                                            newRules = VRule.GetSpecificRule(vRule);
-                                            // maybe VRule static method to populate data based on rule type
-                                        }
-                                        else if (checkChildNode.Name.ToLower() == "check-content-ref")
-                                        {
-                                            vRule.CheckContentRefHref = checkChildNode.Attributes["href"].InnerText;
-                                        }
-                                    }
-
-                                }
-                                else
-                                {
-                                    string temp = ruleChildNode.InnerText;
-                                }
-                            }
-                            //if(newRule.Ensure == null || newRule.Ensure.Length == 0)
-                            // {
-                            //     newRule.Ensure = "Present";
-                            // }
-                            foreach (VRule r in newRules)
-                            {
-                                rule.Rules.Add(r);
-                            }
-
-                        }
-                    }
-                }
-
-            }
-
-
-
-
-            //XmlNodeList groupRules = xmlDoc.GetElementsByTagName("Group");
-            int i = 0;
-            /*
-            foreach (XmlNode node in groupRules)
-            {
-                Rule rule = new Rule();
-                rule.FilePath = FilePath;
-                foreach (XmlNode child in node.ChildNodes)
-                {
-                    VRule vRule = new VRule();
-                    if (child.Name.ToLower() == "title")
-                    {
-
-                        rule.Title = child.InnerText;
-                    }
-                    else if (child.Name.ToLower() == "description")
-                    {
-                        rule.Description = child.InnerText;
-                    }
-                    else if (child.Name.ToLower() == "rule")
-                    {
-                        //vRule.RuleId = node.Attributes["id"].Value;
-                        //var newRule = new VRule();
-
-                        List<VRule> newRules = new List<VRule>();
-                        vRule.Severity = child.Attributes["severity"].Value;
-                        vRule.GroupId = node.Attributes["id"].InnerText;
-                        foreach (XmlNode ruleChildNode in child.ChildNodes)
-                        {
-
-                            if (ruleChildNode.Name.ToLower() == "title")
-                            {
-                                vRule.RuleTitle = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "description")
-                            {
-                                vRule.RuleDescription = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "ensure")
-                            {
-                                vRule.Ensure = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "version")
-                            {
-                                vRule.Version = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "ident")
-                            {
-                                vRule.Identifiers.Add(ruleChildNode.InnerText);
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "fixtext")
-                            {
-                                vRule.FixText = ruleChildNode.InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "fix")
-                            {
-                                vRule.FixId = ruleChildNode.Attributes["id"].InnerText;
-                            }
-                            else if (ruleChildNode.Name.ToLower() == "check")
-                            {
-                                vRule.CheckSystem = ruleChildNode.Attributes["system"].Value;
-                                foreach (XmlNode checkChildNode in ruleChildNode.ChildNodes)
-                                {
-                                    if (checkChildNode.Name.ToLower() == "check-content")
-                                    {
-                                        vRule.CheckContent = checkChildNode.InnerText;
-
-                                        // get isAfinding and isNotAFinding
-                                        vRule.IsAFinding = VRule.GetIsAFindingString(vRule.CheckContent);
-                                        vRule.IsNotAFinding = VRule.GetIsNotAFindingString(vRule.CheckContent);
-
-                                        // determine rule type
-                                        // based on type, properties populated will be different
-                                        newRules = VRule.GetSpecificRule(vRule);
-                                        // maybe VRule static method to populate data based on rule type
-                                    }
-                                    else if (checkChildNode.Name.ToLower() == "check-content-ref")
-                                    {
-                                        vRule.CheckContentRefHref = checkChildNode.Attributes["href"].InnerText;
-                                    }
-                                }
-
-                            }
-                            else
-                            {
-                                string temp = ruleChildNode.InnerText;
-                            }
-                        }
-                        //if(newRule.Ensure == null || newRule.Ensure.Length == 0)
-                        // {
-                        //     newRule.Ensure = "Present";
-                        // }
-                        foreach(VRule r in newRules)
-                        {
-                            rule.Rules.Add(r);
-                        }
-                        
-                    }
-                }
-                i++;
-                rules.Add(rule);
-            }
-            */
-            return myList;
-        }
         public static List<Rule> PopulatePreProcessedRules(string FilePath)
         {
-            // get log file to process manual changes
+            // this is the one is use
             List<Rule> myList = new List<Rule>();
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(FilePath);
@@ -1002,19 +599,12 @@ namespace ParseXccdf
                                     if (checkChildNode.Name.ToLower() == "check-content")
                                     {
                                         vRule.CheckContent = checkChildNode.InnerText;
+                                        vRule.OriginalCheckContent = checkChildNode.InnerText;
                                         vRule.IsAFinding = VRule.GetIsAFindingString(vRule.CheckContent);
                                         vRule.IsNotAFinding = VRule.GetIsNotAFindingString(vRule.CheckContent);
                                         string[] ruleTypeData = VRule.GetRuleType(vRule.CheckContent);
                                         vRule.RuleType = ruleTypeData[0];
                                         vRule.DscResource = ruleTypeData[1];
-                                        if (ruleTypeData[0] == "RegistryPolicyFile")
-                                        {
-                                            vRule = VRule.PopulateAdditionalData(vRule);
-                                        }
-                                        else if (ruleTypeData[0] == "RootCertificateRule")
-                                        {
-                                            
-                                        }
                                         
                                     }
                                     else if (checkChildNode.Name.ToLower() == "check-content-ref")
@@ -1380,6 +970,99 @@ namespace ParseXccdf
 
 
             return postProcessedFileName;
+        }
+        public static List<VRule> GetMultiLineRule(XmlNode RuleXml)
+        {
+            List<VRule> rules = new List<VRule>();
+
+
+
+            return rules;
+        }
+        public static VRule GetSingleLineRule(XmlNode RuleXml)
+        {
+            VRule vRule = null;
+
+
+
+            return vRule;
+        }
+        public static List<Rule> PopulateRule(XmlNode RuleXml)
+        {
+            List<Rule> ruleList = new List<Rule>();
+            string type = VRule.GetRuleType(RuleXml);
+            string checkContent = "";
+            if (type == "RegistryRule")
+            {
+                if (RegistryVRule.IsMultilineRegEntry(checkContent))
+                {
+                    //ruleList = 
+                }
+                else
+                {
+
+                }
+            }
+            else if (type == "ManualRule")
+            {
+
+            }
+            else if (type == "HardCodedRule")
+            {
+
+            }
+
+
+
+
+            foreach (XmlNode child in RuleXml.ChildNodes)
+            {
+            }
+
+            // get rule type
+            // call isMultiLine method
+            // process rule/s
+
+
+            return ruleList;
+        }
+        public static List<Rule> PopulatePreProcessedRulesSingleCheckContent(string FilePath)
+        {
+            List<Rule> myList = new List<Rule>();
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.Load(FilePath);
+            XmlNodeList groupRules = xmlDoc.GetElementsByTagName("Group");
+            foreach (XmlNode node in groupRules)
+            {
+                List<string> splitCheckContent = new List<string>();
+                string checkContent = VRule.GetCheckContent(node);
+                string ruleType = VRule.GetRuleType(node);
+                bool isMultiline = false;
+                switch (ruleType)
+                {
+                    case "RegistryRule":
+                        isMultiline = RegistryVRule.IsMultilineRegEntry((checkContent));
+                        if (isMultiline) { splitCheckContent = RegistryVRule.RegGetMultilineCheckContent(checkContent); }
+                        else { splitCheckContent.Add(checkContent); }
+                        break;
+                    case "ManualRule":
+                        isMultiline = ManualVRule.IsMultiline(checkContent);
+                        break;
+                    case "HardcodedRule":
+                        isMultiline = ManualVRule.IsMultiline(checkContent);
+                        break;
+                    case "RootCertificateRule":
+                        isMultiline = RootCertificateVRule.IsMutliCertContent(checkContent);
+                        break;
+                }
+
+                foreach (string splitContent in splitCheckContent)
+                {
+
+                }
+            }
+
+            return myList;
         }
     }
 }

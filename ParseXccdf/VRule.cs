@@ -33,6 +33,7 @@ namespace ParseXccdf
         private string ruleType;
         private string dscResource;
         private string ensure;
+        private bool isCheckContentMultiline;
         private bool modifiedCheckContent;
         private List<string> isAFinding;
         private List<string> isNotAFinding;
@@ -164,6 +165,11 @@ namespace ParseXccdf
         {
             get { return ensure; }
             set { ensure = value; }
+        }
+        public bool IsCheckContentMultiline
+        {
+            get { return isCheckContentMultiline; }
+            set { isCheckContentMultiline = value; }
         }
         #endregion 
         public static string TrimFixText(string FixText)
@@ -337,6 +343,26 @@ namespace ParseXccdf
             {
                 type = "RootCertificateRule";
                 DscResource = "CertificateDSC";
+            }
+            else if(IsNxServiceRule(CheckContent))
+            {
+                type = "nxServiceRule";
+                DscResource = "nxService";
+            }
+            else if(IsNxFileLineRule(CheckContent))
+            {
+                type = "nxFileLineRule";
+                DscResource = "nx";
+            }
+            else if (IsNxFileRule(CheckContent))
+            {
+                type = "nxFilRule";
+                DscResource = "nx";
+            }
+            else if (IsNxPackageRule(CheckContent))
+            {
+                type = "nxPackageRule";
+                DscResource = "nx";
             }
             else
             {
@@ -626,6 +652,124 @@ namespace ParseXccdf
             }
 
             return (Regex.IsMatch(CheckContent, pattern));
+        }
+        private static bool IsNxPackageRule(string CheckContent)
+        {
+            bool isMatch = false;
+
+            string patternYum = @"dpkg -l \w*|dpkg -l \|#\syum\s+list\s+installed\s+";
+            string patterNoMatchNegIntegrity = @"^(?!.*(?:Verify the|A) file integrity tool).*";
+            string patternNoMatchNegNotInstalled = @"^(?!not installed, this is Not Applicable$).*";
+            string patternNoMatchNegInstalledService = @"^(?!If\s+""\w*""\s+is\s+installed,\s+check\s+to\s+see\s+if\s+the\s+""\w*""\s+service\s+is\s+active\s+with\s+the\s+following\s+command).*";
+
+            //$CheckContent - Match 'dpkg -l \w*|dpkg -l \||#\s*yum\s+list\s+installed\s+' - and
+            //$CheckContent - NotMatch '(?:Verify the|A) file integrity tool' - and
+            //$CheckContent - NotMatch 'not installed, this is Not Applicable' - and
+            //$CheckContent - NotMatch 'If "\w*" is installed, check to see if the "\w*" service is active with the following command'
+
+            if (Regex.IsMatch(CheckContent, patternYum) &&
+                Regex.IsMatch(CheckContent, patterNoMatchNegIntegrity) &&
+                Regex.IsMatch(CheckContent, patternNoMatchNegNotInstalled) &&
+                Regex.IsMatch(CheckContent, patternNoMatchNegInstalledService))
+                {
+                    isMatch = true;
+                }
+            return isMatch;
+        }
+        private static bool IsNxFileRule(string CheckContent)
+        {
+            bool isMatch = false;
+            string patternSudo = @"(?:#|\$\s+sudo|#\s+sudo)\s+(?:cat|grep|more).*/.*/.*(?:grep|).*";
+            string patternOs = @"Verify\s+the\s+operating\s+system\s+displays\s+the\s+Standard\s+Mandatory\s+DoD\s+Notice\s+and\s+Consent\s+Banner";
+            string patternNoMatch = @"^(?!ESXi$).*";
+
+            if (Regex.IsMatch(CheckContent, patternSudo) &&
+                Regex.IsMatch(CheckContent, patternOs) &&
+                Regex.IsMatch(CheckContent, patternNoMatch))
+            {
+                isMatch = true;
+            }
+            //$CheckContent - Match '(?:#|\$\s+sudo||#\s+sudo)\s+(?:cat|grep|more).*/.*/.*(?:grep|).*' - and
+            //$CheckContent - Match 'Verify\s+the\s+operating\s+system\s+displays\s+the\s+Standard\s+Mandatory\s+DoD\s+Notice\s+and\s+Consent\s+Banner' - and
+            //$CheckContent - NotMatch 'ESXi'
+           
+            return isMatch;
+        }
+        private static bool IsNxFileLineRule(string CheckContent)
+        {
+            bool isMatch = false;
+
+            //string pattern = @"If\s+.*"".*".* commented out.*this is a finding | If\s +.* ""\w * ".*is missing from.*file.*this is a finding";
+            string patternUbuntuFinding = "If\\s+.*\".*\".*commented out.*this is a finding|If\\s+.*\"\\w*\".*is missing from.*file.*this is a finding";
+            string patternUbuntuAuditCtrl = "\\s*sudo\\s*aud(i)*tctl\\s*-l\\s*";
+            string AIImrpovedUbuntuAuditCtrlPattern = @"(?:#|\$\s*)?sudo\s+(?:/usr/bin/)?auditctl\s+-l(?:\s*\|)?";
+
+            if(Regex.IsMatch(CheckContent,patternUbuntuFinding) || 
+                Regex.IsMatch(CheckContent,AIImrpovedUbuntuAuditCtrlPattern))
+            {
+                isMatch = true;
+            }
+            return isMatch;
+
+            // For Ubuntu
+            //# CheckContent match for Ubuntu STIG
+            //(
+            //    $CheckContent - Match 'If\s+.*".*".*commented out.*this is a finding|If\s+.*"\w*".*is missing from.*file.*this is a finding' - or
+            //    $CheckContent - Match '\s*sudo\s*aud(i)*tctl\s*-l\s*\|'
+            //) -or
+            //# CheckContent match for RHEL STIG
+            // (
+            //    $CheckContent - Match '(?:#|\$\s+sudo|#\s+sudo)\s+(?:cat|grep|more).*/.*/.*(?:grep|).*' - and
+            //   (
+            //       $CheckContent - Match 'If\s+.*(?:"\w*"|"\w*\s*\w"|the\s+line\s+is\s+commented\s+out).*,\s+this\s+is\s+a\s+finding' - or
+            //       $CheckContent - Match 'If\s+.*required\s+value\s+is\s+not\s+set.*,\s+this\s+is\s+a\s+finding' - or
+            //       $CheckContent - Match 'If\s+.*configuration\s+file\s+does\s+not\s+exist\s+or\s+allows\s+for.*,\s+this\s+is\s+a\s+finding' - or
+            //       $CheckContent - Match 'If\s+.*command(?:s|)\s+(?:does|do)\s+not\s+return\s+(?:any\s+|a\s+line\s+|)output.*,\s+this\s+is\s+a\s+finding' - or
+            //       $CheckContent - Match 'If\s+.*there\s+is\s+no\s+process\s+to\s+validate.*,\s+this\s+is\s+a\s+finding' - or
+            //       $CheckContent - Match 'If\s+there\s+is\s+no\s+evidence\s+(?:that\s+|)the\s+.*,\s+this\s+is\s+a\s+finding'
+            //   )
+            // ) - and
+            // $CheckContent - NotMatch 'ESXi' - and
+            // $CheckContent - NotMatch '#\s*(?:cat|more)\s+\/etc\/fstab.*'
+            // # for Oracle
+
+
+        }
+        private static bool IsNxServiceRule(string CheckContent)
+        {
+
+            bool isMatch = false;
+            string patternSysCtrl = @"systemctl\s*(is-enabled|is-active|status)";
+            string patternStatus = @"If\s+(?:the\s+)?""\w*"".*status.*,\s*this\s*is\s*a\s*finding";
+            string patternReturns = @"If\s*the.*command.*returns.*,\s*this\s*is\s*a\s*finding\.";
+            string patternActive = @"If\s*"".*""\s*is\s*not\s*active\s*or\s*loaded,\s*this\s*is\s*a\s*finding\.";
+            string patternOtherThan = @"If\s*something\s*other\s*than\s*"".*""\s*is\s*returned,\s*this\s*is\s*a\s*finding\.";
+            string patternActiveNotDocumented = @"If\s*the\s*service\s*is\s*active\s*and\s*is\s*not\s*documented,\s*this\s*is\s*a\s*finding\.";
+
+            if( Regex.IsMatch(CheckContent,patternSysCtrl) && 
+                (Regex.IsMatch(CheckContent, patternStatus) ||
+                Regex.IsMatch(CheckContent, patternReturns) ||
+                Regex.IsMatch(CheckContent, patternActive) ||
+                Regex.IsMatch(CheckContent, patternOtherThan) ||
+                Regex.IsMatch(CheckContent, patternActiveNotDocumented))
+              )
+            {
+                isMatch = true;
+            }
+            /*
+           
+            $CheckContent - Match 'systemctl\s*(is-enabled|is-active|status)' - and
+            (
+                $CheckContent - Match 'If\s+(?:|the\s+)"\w*".*status.*,\s*this\s*is\s*a\s*finding' - or
+                $CheckContent - Match 'If\s*the.*command.*returns.*,\s*this\s*is\s*a\s*finding.' - or
+                $CheckContent - Match 'If\s*".*"\s*is\s*not\s*active\s*or\s*loaded,\s*this\s*is\s*a\s*finding.' - or
+                $CheckContent - Match 'If\s*something\s*other\s*than\s*".*"\s*is\s*returned,\s*this\s*is\s*a\s*finding.' - or
+                $CheckContent - Match 'If\s*the\s*service\s*is\s*active\s*and\s*is\s*not\s*documented,\s*this\s*is\s*a\s*finding.'
+            )
+            */
+
+
+            return isMatch;
         }
         #endregion
 

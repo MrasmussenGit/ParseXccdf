@@ -45,6 +45,10 @@
   <ItemGroup>
     <Compile Include="HardCodedVRule.cs" />
     <Compile Include="ManualVRule.cs" />
+    <Compile Include="nxFileLineRule.cs" />
+    <Compile Include="nxFileRule.cs" />
+    <Compile Include="nxPackageRule.cs" />
+    <Compile Include="nxServiceRule.cs" />
     <Compile Include="PostProcessedVRule.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
